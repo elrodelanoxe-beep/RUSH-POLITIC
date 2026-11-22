@@ -22,28 +22,32 @@ El protagonista deberá permanecer suficientemente visible durante toda la parti
 
 ## 4. SISTEMA DE MOVIMIENTO DEL PROTAGONISTA
 
-**Decisión confirmada: movimiento libre lateral.**
+**Decisión confirmada (v0.2): tres carriles con movimiento lateral libre.**
 
-El protagonista avanzará automáticamente por la carretera, pero podrá desplazarse libremente hacia la izquierda y la derecha.
+El protagonista avanza automáticamente por la carretera. La calzada se divide en **tres carriles**, cada uno con una función:
 
-No se utilizará un sistema de carriles predeterminados.
+| Carril | Qué aparece | Qué hace el jugador |
+|---|---|---|
+| Izquierdo | Armas especiales | Dispararlas hasta dejar su contador a 0 para conseguirlas |
+| Central | Las hordas | Frenarlas a tiros antes de que le alcancen |
+| Derecho | Bonus +1 / +2 | Tocarlos para recogerlos |
+
+El jugador se desplaza libremente a izquierda y derecha entre los carriles. La estrategia consiste en decidir cuándo salir del carril central para conseguir armas o bonus, sabiendo que mientras tanto la horda se acerca.
 
 Características:
 
 - Avance longitudinal automático.
-- Desplazamiento lateral libre.
-- Movimiento por toda la anchura transitable de la carretera.
+- Desplazamiento lateral libre entre los tres carriles.
 - Límites físicos de desplazamiento.
-- Posibilidad de esquivar obstáculos.
-- Posibilidad de evitar ataques.
-- Recogida de potenciadores y objetos.
+- Posibilidad de esquivar enemigos.
+- Recogida de bonus tocándolos.
 - Animaciones naturales de carrera y desplazamiento lateral.
 
 ### 4.1. Controles móviles
 
-Se propone utilizar un joystick virtual o un sistema de arrastre táctil.
+Arrastre táctil: el personaje sigue al dedo a izquierda y derecha.
 
-El jugador podrá controlar el desplazamiento lateral sin necesidad de gestionar manualmente el avance.
+El jugador no controla el avance ni el disparo, solo la posición lateral.
 
 El sistema deberá ser preciso, fluido y responder correctamente a los movimientos del dedo.
 

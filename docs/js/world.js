@@ -110,9 +110,8 @@ export class World {
     }
     b.box(12, 1.2, 1.4, 0, -2.9, -L / 2, 0x7d8692);
     // líneas discontinuas de carril
-    for (const x of [-hw / 2, hw / 2]) for (let z = 1; z < L; z += 6) b.box(0.15, 0.02, 3, x, 0.012, -z - 1.5, 0xf2f2f2);
-    b.box(0.14, 0.02, L, -0.12, 0.012, -L / 2, 0xffcc33);
-    b.box(0.14, 0.02, L, 0.12, 0.012, -L / 2, 0xffcc33);
+    // tres carriles: izquierda armas, centro hordas, derecha bonus
+    for (const x of [-hw / 3, hw / 3]) for (let z = 1; z < L; z += 6) b.box(0.16, 0.02, 3, x, 0.012, -z - 1.5, 0xf2f2f2);
     // farolas
     for (const [s, z] of [[-1, 5], [1, 20]]) {
       const x = s * (hw + 1.4);

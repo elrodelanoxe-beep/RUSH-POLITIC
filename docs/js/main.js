@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { ROAD, PLAYER, CAMERA, WEAPONS, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION } from './config.js';
+import { ROAD, PLAYER, CAMERA, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION, LANES, WEAPON_TIERS, SHOT, BONUS, CRATE } from './config.js';
 import { World } from './world.js';
 import { Horde } from './enemies.js';
 import { Bullets, Particles, Shockwaves, Flashes } from './combat.js';
 import { PlayerModel, FLASH_TEX, GLOW_TEX } from './player.js';
-import { Gates, GOOD, BAD } from './gates.js';
+import { WeaponCrates, BonusTokens } from './pickups.js';
 import { Boss } from './boss.js';
 import { Sfx } from './audio.js';
 
@@ -41,7 +41,8 @@ const flashes = new Flashes(scene, glowTex, 90);
 const muzzleFx = new Flashes(scene, FLASH_TEX(), 24);
 const shock = new Shockwaves(scene);
 const hero = new PlayerModel(scene);
-const gates = new Gates(scene);
+const crates = new WeaponCrates(scene);
+const bonuses = new BonusTokens(scene);
 const boss = new Boss(scene);
 const sfx = new Sfx();
 
@@ -50,77 +51,37 @@ const G = {
   mode: 'menu', phase: 'intro', phaseT: 0,
   px: 0, pz: 0, vx: 0, targetX: 0, aimYaw: 0,
   hp: PLAYER.maxHp, kills: 0, killScore: 0, time: 0,
-  weaponId: 'pistola', ammo: Infinity,
-  dmgMult: 1, rateMult: 1, multishot: 1, pierce: 0, fireCd: 0,
-  waveIndex: 0, spawnAcc: 0, leadersDone: 0, midGate: false,
-  nextCarZ: -90, shake: 0, camBoss: 0, endT: 0, won: false,
+  tier: 0, power: 0, bonusIdx: 0, fireCd: 0, nextCrateZ: -CRATE.firstAt, nextBonusZ: -40,
+  waveIndex: 0, spawnAcc: 0, leadersDone: 0,
+  shake: 0, camBoss: 0, endT: 0, won: false,
 };
 
 function resetGame() {
-  horde.clear(); bullets.clear(); particles.clear(); sparks.clear(); flashes.clear(); muzzleFx.clear(); gates.clear(); world.clearCars(); boss.reset();
+  horde.clear(); bullets.clear(); particles.clear(); sparks.clear(); flashes.clear(); muzzleFx.clear(); crates.clear(); bonuses.clear(); world.clearCars(); boss.reset();
   Object.assign(G, {
     phase: 'intro', phaseT: 0, px: 0, pz: 0, vx: 0, targetX: 0, aimYaw: 0,
     hp: PLAYER.maxHp, kills: 0, killScore: 0, time: 0,
-    weaponId: 'pistola', ammo: Infinity, dmgMult: 1, rateMult: 1, multishot: 1, pierce: 0, fireCd: 0,
-    waveIndex: 0, spawnAcc: 0, leadersDone: 0, midGate: false, nextCarZ: -90, shake: 0, camBoss: 0, endT: 0, won: false,
+    tier: 0, power: 0, bonusIdx: 0, fireCd: 0, nextCrateZ: -CRATE.firstAt, nextBonusZ: -40,
+    waveIndex: 0, spawnAcc: 0, leadersDone: 0, shake: 0, camBoss: 0, endT: 0, won: false,
   });
-  hero.setWeapon('pistola');
+  hero.setWeapon(WEAPON_TIERS[0].model);
   hero.group.rotation.set(0, 0, 0);
   world.segments.forEach((s, i) => s.position.z = 30 - i * ROAD.segmentLength);
   world.towers.forEach((t, i) => t.position.z = -60 - i * 150);
-  gates.spawn(-55, OPTIONS.find(o => o.id === 'smg'), OPTIONS.find(o => o.id === 'dmg2'));
   ui.bossBar.classList.add('hidden');
 }
 
-function equip(id) {
-  const w = WEAPONS[id];
-  if (G.weaponId === id) G.ammo += w.ammo; else { G.weaponId = id; G.ammo = w.ammo; }
-  hero.setWeapon(id);
+const weapon = () => WEAPON_TIERS[G.tier];
+const powerMult = () => 1 + G.power * BONUS.perPoint;
+
+function equipTier(i) {
+  G.tier = i;
+  const w = weapon();
+  hero.setWeapon(w.model);
+  sfx.play('gate');
+  banner(w.name, '+ ' + w.up, true);
+  particles.emit(G.px, 1.5, G.pz - 0.5, 24, [0xffffff, 0x9be7ff, 0xffe066], 6, 0.8, 1);
 }
-
-// ---------- Mejoras (GDD sección 8) ----------
-const OPTIONS = [
-  { id: 'dmg2', label: 'x2', sub: 'DAÑO', w: 3, ok: g => g.dmgMult < 6, apply: g => { g.dmgMult = Math.min(6, g.dmgMult * 2); } },
-  { id: 'dmg3', label: 'x3', sub: 'DAÑO', w: 1, ok: g => g.dmgMult <= 2 && g.waveIndex >= 2, apply: g => { g.dmgMult = Math.min(6, g.dmgMult * 3); } },
-  { id: 'rate20', label: '+20%', sub: 'CADENCIA', w: 2, ok: g => g.rateMult < 2, apply: g => { g.rateMult = Math.min(2, g.rateMult + 0.2); } },
-  { id: 'rate40', label: '+40%', sub: 'CADENCIA', w: 1.4, ok: g => g.rateMult < 2 && g.waveIndex >= 1, apply: g => { g.rateMult = Math.min(2, g.rateMult + 0.4); } },
-  { id: 'smg', label: 'SUBFUSIL', sub: 'ALTA CADENCIA', w: 2.2, ok: g => g.weaponId !== 'subfusil', apply: () => equip('subfusil') },
-  { id: 'sg', label: 'ESCOPETA', sub: 'DAÑO CERCANO', w: 1.8, ok: g => g.weaponId !== 'escopeta', apply: () => equip('escopeta') },
-  { id: 'ammo100', label: g => g.weaponId === 'escopeta' ? '+30' : '+100', sub: g => g.weaponId === 'escopeta' ? 'CARTUCHOS' : 'BALAS', w: 2.2, ok: g => g.weaponId !== 'pistola' && g.ammo < 400, apply: g => { g.ammo += g.weaponId === 'escopeta' ? 30 : 100; } },
-  { id: 'ammo50', label: g => g.weaponId === 'escopeta' ? '+15' : '+50', sub: g => g.weaponId === 'escopeta' ? 'CARTUCHOS' : 'BALAS', w: 1, ok: g => g.weaponId !== 'pistola', apply: g => { g.ammo += g.weaponId === 'escopeta' ? 15 : 50; } },
-  { id: 'multi', label: '+1', sub: 'DISPARO MÚLTIPLE', w: 1.5, ok: g => g.multishot < 3, apply: g => { g.multishot++; } },
-  { id: 'pierce', label: '+1', sub: 'BALA PERFORANTE', w: 1.1, ok: g => g.pierce < 2, apply: g => { g.pierce++; } },
-  { id: 'heal', label: '+25', sub: 'VIDA', w: 2.2, ok: g => g.hp < 85, apply: g => { g.hp = Math.min(PLAYER.maxHp, g.hp + 25); } },
-  { id: 'bomb', label: 'BOMBA', sub: 'EXPLOSIÓN EN ÁREA', w: 1.2, ok: g => g.waveIndex >= 1, apply: () => bomb() },
-  // trampas en rojo: obligan a fijarse antes de cruzar
-  { id: 'badRate', bad: true, label: '-20%', sub: 'CADENCIA', w: 1, ok: g => g.rateMult > 0.8, apply: g => { g.rateMult = Math.max(0.6, g.rateMult - 0.2); } },
-  { id: 'badHp', bad: true, label: '-15', sub: 'VIDA', w: 1, ok: g => g.hp > 30, apply: g => { g.hp = Math.max(1, g.hp - 15); } },
-  { id: 'badDmg', bad: true, label: '÷2', sub: 'DAÑO', w: 1, ok: g => g.dmgMult >= 2, apply: g => { g.dmgMult = Math.max(1, g.dmgMult / 2); } },
-  { id: 'badAmmo', bad: true, label: '-50', sub: 'BALAS', w: 0.8, ok: g => g.weaponId === 'subfusil' && g.ammo > 80, apply: g => { g.ammo -= 50; } },
-];
-
-function resolveOpt(o) {
-  const r = { ...o, label: typeof o.label === 'function' ? o.label(G) : o.label, sub: typeof o.sub === 'function' ? o.sub(G) : o.sub };
-  return r;
-}
-
-function pickOptions() {
-  const withTrap = G.waveIndex >= 1 && Math.random() < 0.35;
-  const pool = OPTIONS.filter(o => o.ok(G) && !o.bad);
-  const traps = OPTIONS.filter(o => o.ok(G) && o.bad);
-  const take = () => {
-    const tot = pool.reduce((s, o) => s + o.w, 0);
-    let r = Math.random() * tot;
-    for (let i = 0; i < pool.length; i++) { r -= pool[i].w; if (r <= 0) return pool.splice(i, 1)[0]; }
-    return pool.pop();
-  };
-  const a = take();
-  let b = withTrap && traps.length ? traps[(Math.random() * traps.length) | 0] : take();
-  if (a.id.startsWith('ammo') && b && b.id.startsWith('ammo')) b = take() || b;
-  return Math.random() < 0.5 ? [resolveOpt(a), resolveOpt(b)] : [resolveOpt(b), resolveOpt(a)];
-}
-
-function spawnGate(z) { const [l, r] = pickOptions(); gates.spawn(z, l, r); }
 
 function bomb() {
   sfx.play('bomb'); G.shake = 0.5;
@@ -144,18 +105,19 @@ function pickType(mix) {
 function spawnOne(wave) {
   const z = G.pz - SPAWN_DISTANCE - rand(0, 10);
   if (Math.random() < wave.groups) {
-    const n = 4 + (Math.random() * 6 | 0), cx = rand(-5, 5), type = pickType(wave.mix);
-    for (let i = 0; i < n; i++) horde.spawn(i === 0 ? type : (Math.random() < 0.7 ? 'normal' : type), clamp(cx + rand(-1.8, 1.8), -6.3, 6.3), z - rand(0, 4));
+    const n = 4 + (Math.random() * 5 | 0), cx = rand(-0.8, 0.8), type = pickType(wave.mix);
+    for (let i = 0; i < n; i++) horde.spawn(i === 0 ? type : (Math.random() < 0.7 ? 'normal' : type), clamp(cx + rand(-1.4, 1.4), -MID, MID), z - rand(0, 5), { hpMul: wave.hpMul });
     return n;
   }
-  horde.spawn(pickType(wave.mix), rand(-6.3, 6.3), z);
+  horde.spawn(pickType(wave.mix), rand(-MID, MID), z, { hpMul: wave.hpMul });
   return 1;
 }
 
-function spawnLeaderGroup() {
-  const z = G.pz - SPAWN_DISTANCE - 6, cx = rand(-4, 4);
-  horde.spawn('lider', cx, z);
-  for (let i = 0; i < 10; i++) horde.spawn(Math.random() < 0.3 ? 'corredor' : 'normal', clamp(cx + rand(-2.5, 2.5), -6.3, 6.3), z + rand(-3, 3), { speedMul: 1.1 });
+const MID = 1.9;  // mitad útil del carril central
+function spawnLeaderGroup(wave) {
+  const z = G.pz - SPAWN_DISTANCE - 6, cx = 0;
+  horde.spawn('lider', cx, z, { hpMul: wave.hpMul });
+  for (let i = 0; i < 9; i++) horde.spawn(Math.random() < 0.3 ? 'corredor' : 'normal', clamp(cx + rand(-1.8, 1.8), -MID, MID), z + rand(-3, 3), { speedMul: 1.1, hpMul: wave.hpMul });
 }
 
 function setPhase(p) { G.phase = p; G.phaseT = 0; }
@@ -165,23 +127,22 @@ function updateDirector(dt) {
   const W = WAVES[G.waveIndex];
   switch (G.phase) {
     case 'intro':
-      if (G.phaseT > 2.2) { setPhase('wave'); banner('OLEADA 1', 'Arrastra el dedo para moverte'); }
+      if (G.phaseT > 2.2) { setPhase('wave'); banner('OLEADA 1', 'Izquierda: armas · Centro: horda · Derecha: bonus'); }
       break;
     case 'wave': {
       G.spawnAcc += W.rate * dt * (0.7 + 0.6 * G.phaseT / W.duration);
       while (G.spawnAcc >= 1) G.spawnAcc -= spawnOne(W);
       const leaders = W.leaders || 0;
-      if (G.leadersDone < leaders && G.phaseT > (G.leadersDone + 0.5) * W.duration / leaders) { G.leadersDone++; spawnLeaderGroup(); }
-      if (!G.midGate && G.phaseT > W.duration * 0.5) { G.midGate = true; spawnGate(G.pz - 95); }
+      if (G.leadersDone < leaders && G.phaseT > (G.leadersDone + 0.5) * W.duration / leaders) { G.leadersDone++; spawnLeaderGroup(W); }
       if (G.phaseT > W.duration) {
-        if (G.waveIndex >= WAVES.length - 1) { setPhase('preboss'); banner('¡ATENCIÓN!', 'Algo grande se acerca...'); spawnGate(G.pz - 70); }
-        else { setPhase('break'); spawnGate(G.pz - 70); }
+        if (G.waveIndex >= WAVES.length - 1) { setPhase('preboss'); banner('¡ATENCIÓN!', 'Algo grande se acerca...'); }
+        else setPhase('break');
       }
       break;
     }
     case 'break':
       if (G.phaseT > BREAK_DURATION) {
-        G.waveIndex++; G.leadersDone = 0; G.midGate = false;
+        G.waveIndex++; G.leadersDone = 0;
         setPhase('wave');
         banner('OLEADA ' + (G.waveIndex + 1), G.waveIndex === WAVES.length - 1 ? 'Última oleada' : '');
       }
@@ -192,17 +153,24 @@ function updateDirector(dt) {
     case 'boss':
       break;
   }
-  if (G.phase !== 'boss' && G.pz < G.nextCarZ + 40) {
-    world.spawnCar(Math.random() < 0.5 ? rand(-6, -2) : rand(2, 6), G.nextCarZ - 100);
-    G.nextCarZ -= rand(70, 120);
+  // carril izquierdo: la siguiente arma, cada vez más potente
+  if (G.phase !== 'boss' && G.phase !== 'preboss' && G.pz < G.nextCrateZ + 110) {
+    const next = Math.max(G.tier, ...crates.pool.filter(c => c.active).map(c => c.tierIndex)) + 1;
+    if (next < WEAPON_TIERS.length && !crates.pool.some(c => c.active)) crates.spawn(G.nextCrateZ, next, WEAPON_TIERS[next]);
+    G.nextCrateZ -= rand(...CRATE.every);
+  }
+  // carril derecho: bonus +1 / +2
+  if (G.phase !== 'boss' && G.pz < G.nextBonusZ + 110) {
+    bonuses.spawn(G.nextBonusZ, BONUS.sequence[G.bonusIdx++ % BONUS.sequence.length]);
+    G.nextBonusZ -= rand(...BONUS.every);
   }
 }
 
 // Vida del jefe ajustada a la potencia del jugador para que el combate dure lo mismo
 function bossHp() {
-  const w = WEAPONS[G.weaponId];
-  const dps = w.rate * G.rateMult * G.multishot * w.pellets * (w.pellets > 1 ? 0.55 : 1) * w.damage * G.dmgMult;
-  return Math.round(clamp(dps * 24, BOSS.hp * 0.5, BOSS.hp * 4));
+  const w = weapon();
+  const dps = w.rate * w.shots * w.damage * powerMult() * 0.7;
+  return Math.round(clamp(dps * 24, 300, 80000));
 }
 
 // ---------- Combate ----------
@@ -223,54 +191,29 @@ function hurt(d, x, z) {
   if (G.hp <= 0) lose();
 }
 
-function findTarget(range) {
-  let best = null, bd = Infinity;
-  horde.query(G.pz - range, G.pz - 0.8, e => {
-    const dz = G.pz - e.z, dx = e.x - G.px;
-    const d = dz + Math.abs(dx) * 1.6;
-    if (Math.abs(dx) < dz * 0.9 + 2 && d < bd) { bd = d; best = e; }
-  });
-  return best;
-}
-
-const _dir = new THREE.Vector2(), _muz = new THREE.Vector3();
+// Disparo continuo y recto hacia delante; munición infinita
+const _muz = new THREE.Vector3();
 function shoot(dt) {
-  const w = WEAPONS[G.weaponId];
+  const w = weapon();
   G.fireCd -= dt;
   if (G.fireCd > 0) return;
-  let tx, tz, extraRange = 0;
-  const t = findTarget(w.range);
-  if (t) { tx = t.x + t.vx * 0.15; tz = t.z + 1; }
-  else if (boss.vulnerable) { tx = boss.x; tz = boss.z + 1; extraRange = (G.pz - boss.z) + 4 - w.range; }
-  else { G.aimYaw *= 0.9; return; }
-  G.fireCd = 1 / (w.rate * G.rateMult);
+  G.fireCd += 1 / w.rate;
+  if (G.fireCd < 0) G.fireCd = 0;
   hero.group.updateMatrixWorld(true);
   hero.muzzleWorld(_muz);
-  const gx = _muz.x, gz = _muz.z;
-  _dir.set(tx - gx, tz - gz).normalize();
-  G.aimYaw = Math.atan2(-_dir.x, -_dir.y);
-  const base = Math.atan2(_dir.x, _dir.y);
-  const wr = extraRange > 0 ? { ...w, range: w.range + extraRange } : w;
-  const dmg = w.damage * G.dmgMult;
-  const shots = [];
-  for (let m = 0; m < G.multishot; m++) {
-    const off = (m - (G.multishot - 1) / 2) * 0.09;
-    for (let p = 0; p < w.pellets; p++) {
-      const sp = w.pellets > 1 ? (p / (w.pellets - 1) - 0.5) * w.spread + rand(-0.03, 0.03) : rand(-w.spread, w.spread);
-      shots.push(base + off + sp);
-    }
+  const dmg = w.damage * powerMult();
+  const props = { speed: SHOT.speed, range: SHOT.range, size: 1 + w.damage * 0.04, color: w.color };
+  for (let m = 0; m < w.shots; m++) {
+    const off = (m - (w.shots - 1) / 2) * SHOT.spacing;
+    const b = bullets.fire(G.px + off, _muz.y, _muz.z, 0, -1, props, dmg, 0);
+    if (b) b.splash = w.splash || 0;
   }
-  for (const a of shots) bullets.fire(gx, _muz.y, gz, Math.sin(a), Math.cos(a), wr, dmg, G.pierce);
-  hero.muzzle(); sfx.play(G.weaponId);
-  const big = G.weaponId === 'escopeta' ? 1.6 : 0.9;
+  hero.muzzle(); sfx.play(w.sound);
+  const big = w.damage > 5 ? 1.6 : w.damage > 2 ? 1.2 : 0.9;
   flashes.emit(_muz.x, _muz.y, _muz.z, big * 0.8, w.color, 0.06, 0.4);
   muzzleFx.emit(_muz.x, _muz.y, _muz.z - 0.15, big * 0.5, 0xffffff, 0.05, 0.3);
-  sparks.emit(_muz.x, _muz.y, _muz.z - 0.2, G.weaponId === 'escopeta' ? 6 : 2, [0xffe9a8, 0xffb347], 5, 0.12, 1, 0);
+  sparks.emit(_muz.x, _muz.y, _muz.z - 0.2, 2, [0xffe9a8, 0xffb347], 5, 0.12, 1, 0);
   particles.emit(_muz.x + 0.08, _muz.y + 0.05, _muz.z + 0.25, 1, 0xd4a017, 2.2, 0.5, 0.35, 12);  // casquillo
-  if (G.weaponId !== 'pistola') {
-    G.ammo -= 1;
-    if (G.ammo <= 0) { toast('SIN MUNICIÓN', '#ff7675'); sfx.play('empty'); equip('pistola'); G.ammo = Infinity; }
-  }
 }
 
 const SPARK = [0xfff3b0, 0xffd166, 0xffffff, 0xffa040];
@@ -279,8 +222,23 @@ function impact(x, y, z, dmg) {
   sparks.emit(x, y, z, 4, SPARK, 6, 0.22, 1, 6);
 }
 const CONFETTI = [0xff4d6d, 0xffd166, 0x06d6a0, 0x4cc9f0, 0xffffff];
+function splashDamage(b, x, z) {
+  shock.emit(x, z, b.splash * 2, 0xffa040, 0.25);
+  horde.query(z - b.splash, z + b.splash, e => {
+    if (Math.abs(e.x - x) < b.splash && e.i !== b.lastHit) { e.hp -= b.dmg * 0.5; e.flash = 0.07; if (e.hp <= 0) enemyDown(e); }
+  });
+}
+
 function bulletHit(b, x0, z0, x1, z1) {
   let consumed = false;
+  const crate = crates.hitTest(x1, z0, z1);
+  if (crate) {
+    crate.hp -= b.dmg; crate.pop = 1;
+    impact(x1, b.y, crate.z + 0.2, b.dmg);
+    sfx.play('hit');
+    if (crate.hp <= 0) { crate.done = true; crate.fade = 0; equipTier(crate.tierIndex); }
+    return true;
+  }
   const zmin = Math.min(z0, z1) - 0.6, zmax = Math.max(z0, z1) + 0.6;
   horde.query(zmin, zmax, e => {
     if (e.i === b.lastHit) return;
@@ -299,6 +257,7 @@ function bulletHit(b, x0, z0, x1, z1) {
     sfx.play('hit');
     if (e.hp <= 0) enemyDown(e);
     b.lastHit = e.i;
+    if (b.splash) splashDamage(b, bx, e.z);
     if (b.pierce > 0) { b.pierce--; return; }
     consumed = true; return true;
   });
@@ -394,14 +353,14 @@ function updateHud() {
   const prog = G.phase === 'preboss' || G.phase === 'boss' || G.phase === 'won' ? 1 : clamp(elapsed / TOTAL_TIME, 0, 1);
   const pk = Math.round(prog * 200);
   if (cache.prog !== pk) { cache.prog = pk; ui.progFill.style.transform = `scaleX(${prog})`; }
-  const w = WEAPONS[G.weaponId];
+  const w = weapon();
   setText(ui.weapon, 'weapon', w.name);
-  setText(ui.ammo, 'ammo', G.ammo === Infinity ? '∞' : String(G.ammo));
+  setText(ui.ammo, 'ammo', '∞');
   const bon = [];
-  if (G.dmgMult > 1) bon.push(`<i class="b-dmg">DAÑO x${G.dmgMult}</i>`);
-  if (G.rateMult > 1) bon.push(`<i class="b-rate">CADENCIA +${Math.round((G.rateMult - 1) * 100)}%</i>`);
-  if (G.multishot > 1) bon.push(`<i class="b-multi">MÚLTIPLE x${G.multishot}</i>`);
-  if (G.pierce > 0) bon.push(`<i class="b-pierce">PERFORANTE ${G.pierce}</i>`);
+  bon.push(`<i class="b-dmg">DAÑO ${+(w.damage * powerMult()).toFixed(1)}</i>`);
+  bon.push(`<i class="b-rate">CADENCIA ${w.rate}/s</i>`);
+  bon.push(`<i class="b-multi">DISPAROS x${w.shots}</i>`);
+  if (G.power > 0) bon.push(`<i class="b-pierce">POTENCIA +${G.power}</i>`);
   const bh = bon.join('');
   if (cache.bon !== bh) { cache.bon = bh; ui.bonuses.innerHTML = bh; }
   if (boss.active) {
@@ -469,7 +428,7 @@ function startGame() {
   ui.start.classList.add('hidden'); ui.end.classList.add('hidden'); ui.pause.classList.add('hidden');
   ui.hud.classList.remove('hidden');
   G.mode = 'play';
-  banner('¡CORRE!', 'Dispara solo. Tú esquiva y elige mejoras.');
+  banner('¡CORRE!', 'Disparas sin parar hacia delante');
   last = performance.now();
 }
 
@@ -525,15 +484,14 @@ function step(dt) {
   particles.update(dt);
   sparks.update(dt);
   shock.update(dt);
-  gates.update(dt, G.px, G.pz, opt => {
-    const o = OPTIONS.find(o => o.id === opt.id);
-    o.apply(G); sfx.play('gate');
-    toast(`${opt.label} ${opt.sub}`, opt.bad ? '#ff6b6b' : '#6ec1ff');
-    if (opt.bad) { sfx.play('hurt'); G.shake = 0.3; }
-    particles.emit(G.px, 1.5, G.pz - 0.5, 18, [0xffffff, 0x9be7ff, 0xffe066], 5, 0.7, 0.9);
+  crates.update(dt, G.pz, G.time);
+  bonuses.update(dt, G.px, G.pz, v => {
+    G.power += v; sfx.play('gate');
+    toast(`+${v} POTENCIA`, '#6ec1ff');
+    particles.emit(G.px, 1.5, G.pz - 0.5, 14, [0xffffff, 0x9be7ff, 0x1e88ff], 5, 0.6, 0.8);
   });
   boss.update(dt, G.px, G.pz, bossCb);
-  hero.update(dt, G.px, G.pz, G.vx, G.aimYaw, alive);
+  hero.update(dt, G.px, G.pz, G.vx, 0, alive);
   if (!alive) { hero.group.rotation.x = Math.max(-1.4, hero.group.rotation.x - dt * 4); }
 
   // cámara de seguimiento con ajuste para el jefe (GDD sección 3)
@@ -579,7 +537,7 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // utilidades de prueba (no afectan al juego)
-window.__rp = { G, horde, boss, startGame, WAVES, renderer, scene, camera, hero, gates, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
+window.__rp = { G, horde, boss, startGame, WAVES, renderer, scene, camera, hero, crates, bonuses, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
 
 // Actualización automática: busca versión nueva al abrir y al volver a la app,
 // y recarga una vez cuando el service worker nuevo toma el control.

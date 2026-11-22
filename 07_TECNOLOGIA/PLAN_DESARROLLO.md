@@ -20,7 +20,7 @@ Funcionalidades iniciales:
 10. Sistema de vida de 100 puntos.
 11. Sistema de colisiones.
 12. Tres armas iniciales.
-13. Puertas de bonus.
+13. Armas especiales (carril izquierdo) y bonus +1/+2 (carril derecho). En la v0.1 eran puertas de bonus.
 14. Contador de enemigos eliminados.
 15. Una oleada final con un jefe.
 16. Pantalla de victoria y derrota.

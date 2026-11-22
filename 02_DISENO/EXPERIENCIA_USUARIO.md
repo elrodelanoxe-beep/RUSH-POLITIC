@@ -4,9 +4,9 @@
 
 ## 4.1. Controles móviles
 
-Se propone utilizar un joystick virtual o un sistema de arrastre táctil.
+Arrastre táctil: el personaje sigue al dedo a izquierda y derecha.
 
-El jugador podrá controlar el desplazamiento lateral sin necesidad de gestionar manualmente el avance.
+El jugador no controla el avance ni el disparo, solo la posición lateral.
 
 El sistema deberá ser preciso, fluido y responder correctamente a los movimientos del dedo.
 

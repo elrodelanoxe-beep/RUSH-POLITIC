@@ -17,6 +17,7 @@ const _base = new THREE.Matrix4(), _m = new THREE.Matrix4();
 const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _e = new THREE.Euler();
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const pick = a => a[(Math.random() * a.length) | 0];
+const CENTER_LANE = 1.9; // mitad del carril central (menos margen)
 
 const PARTS = ['pelvis', 'torso', 'head', 'hair', 'cap', 'helmet', 'hood', 'thighL', 'shinL', 'shoeL', 'thighR', 'shinR', 'shoeR',
   'upperArmL', 'foreArmL', 'handL', 'upperArmR', 'foreArmR', 'handR', 'backpack', 'vest', 'sign', 'flag'];
@@ -61,7 +62,7 @@ export class Horde {
     const t = ENEMY_TYPES[typeName];
     const h = 0.92 + Math.random() * 0.16;
     Object.assign(e, {
-      active: true, type: typeName, t, x, z, hp: t.hp, maxHp: t.hp,
+      active: true, type: typeName, t, x, z, hp: t.hp * (extra.hpMul || 1), maxHp: t.hp * (extra.hpMul || 1),
       speed: t.speed * (0.85 + Math.random() * 0.3) * (extra.speedMul || 1),
       lat: t.lateral, scale: t.scale * h, width: t.width * (0.92 + Math.random() * 0.2),
       phase: Math.random() * 6.28, state: 'run', dieT: 0, flash: 0, vx: 0, recoil: 0,
@@ -160,9 +161,9 @@ export class Horde {
         e.z += e.speed * dt;
         if (e.z > pz + 4) { this.release(e); continue; }
         const dzp = pz - e.z;
-        const k = dzp < 45 ? (1 - dzp / 45) * e.aggr : 0;
+        const k = dzp < 32 ? (1 - dzp / 32) * e.aggr : 0;
         e.homeX += e.wander * dt * 0.3;
-        if (Math.abs(e.homeX) > lim) e.wander = -e.wander;
+        if (Math.abs(e.homeX) > CENTER_LANE) { e.wander = -e.wander; e.homeX = Math.sign(e.homeX) * CENTER_LANE; }
         let want = (e.homeX + (px - e.homeX) * k - e.x) * 1.5;
         if (e.type === 'agil') want += Math.sin(e.weave += dt * 3.2) * 2.5;
         want = Math.max(-e.lat, Math.min(e.lat, want));
