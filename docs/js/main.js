@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { ROAD, PLAYER, CAMERA, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION, LANES, WEAPON_TIERS, SHOT, BONUS, CRATE } from './config.js';
+import { ROAD, PLAYER, CAMERA, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION, LANES, WEAPON_TIERS, SHOT, BONUS, CRATE, SQUAD } from './config.js';
+import { Squad, slot } from './squad.js';
 import { World } from './world.js';
 import { Horde } from './enemies.js';
 import { Bullets, Particles, Shockwaves, Flashes } from './combat.js';
@@ -43,6 +44,7 @@ const shock = new Shockwaves(scene);
 const hero = new PlayerModel(scene);
 const crates = new WeaponCrates(scene);
 const bonuses = new BonusTokens(scene);
+const squad = new Squad(scene);
 const boss = new Boss(scene);
 const sfx = new Sfx();
 
@@ -57,14 +59,15 @@ const G = {
 };
 
 function resetGame() {
-  horde.clear(); bullets.clear(); particles.clear(); sparks.clear(); flashes.clear(); muzzleFx.clear(); crates.clear(); bonuses.clear(); world.clearCars(); boss.reset();
+  horde.clear(); bullets.clear(); particles.clear(); sparks.clear(); flashes.clear(); muzzleFx.clear(); crates.clear(); bonuses.clear(); squad.clear(); world.clearCars(); boss.reset();
   Object.assign(G, {
     phase: 'intro', phaseT: 0, px: 0, pz: 0, vx: 0, targetX: 0, aimYaw: 0,
     hp: PLAYER.maxHp, kills: 0, killScore: 0, time: 0,
     tier: 0, power: 0, bonusIdx: 0, fireCd: 0, nextCrateZ: -CRATE.firstAt, nextBonusZ: -40,
     waveIndex: 0, spawnAcc: 0, leadersDone: 0, shake: 0, camBoss: 0, endT: 0, won: false,
   });
-  hero.setWeapon(WEAPON_TIERS[0].model);
+  hero.setWeapon(WEAPON_TIERS[0].model); squad.setWeapon(WEAPON_TIERS[0].model);
+  if (SQUAD.start) squad.add(SQUAD.start, 0, 0);
   hero.group.rotation.set(0, 0, 0);
   world.segments.forEach((s, i) => s.position.z = 30 - i * ROAD.segmentLength);
   world.towers.forEach((t, i) => t.position.z = -60 - i * 150);
@@ -72,12 +75,12 @@ function resetGame() {
 }
 
 const weapon = () => WEAPON_TIERS[G.tier];
-const powerMult = () => 1 + G.power * BONUS.perPoint;
+const powerMult = () => 1;
 
 function equipTier(i) {
   G.tier = i;
   const w = weapon();
-  hero.setWeapon(w.model);
+  hero.setWeapon(w.model); squad.setWeapon(w.model);
   sfx.play('gate');
   banner(w.name, '+ ' + w.up, true);
   particles.emit(G.px, 1.5, G.pz - 0.5, 24, [0xffffff, 0x9be7ff, 0xffe066], 6, 0.8, 1);
@@ -106,18 +109,18 @@ function spawnOne(wave) {
   const z = G.pz - SPAWN_DISTANCE - rand(0, 10);
   if (Math.random() < wave.groups) {
     const n = 4 + (Math.random() * 5 | 0), cx = rand(-0.8, 0.8), type = pickType(wave.mix);
-    for (let i = 0; i < n; i++) horde.spawn(i === 0 ? type : (Math.random() < 0.7 ? 'normal' : type), clamp(cx + rand(-1.4, 1.4), -MID, MID), z - rand(0, 5), { hpMul: wave.hpMul });
+    for (let i = 0; i < n; i++) horde.spawn(i === 0 ? type : (Math.random() < 0.7 ? 'normal' : type), clamp(cx + rand(-1.4, 1.4), -MID, MID), z - rand(0, 5), { hpMul: wave.hpMul * (1 + squad.count / 30) });
     return n;
   }
-  horde.spawn(pickType(wave.mix), rand(-MID, MID), z, { hpMul: wave.hpMul });
+  horde.spawn(pickType(wave.mix), rand(-MID, MID), z, { hpMul: wave.hpMul * (1 + squad.count / 30) });
   return 1;
 }
 
 const MID = 1.9;  // mitad útil del carril central
 function spawnLeaderGroup(wave) {
   const z = G.pz - SPAWN_DISTANCE - 6, cx = 0;
-  horde.spawn('lider', cx, z, { hpMul: wave.hpMul });
-  for (let i = 0; i < 9; i++) horde.spawn(Math.random() < 0.3 ? 'corredor' : 'normal', clamp(cx + rand(-1.8, 1.8), -MID, MID), z + rand(-3, 3), { speedMul: 1.1, hpMul: wave.hpMul });
+  horde.spawn('lider', cx, z, { hpMul: wave.hpMul * (1 + squad.count / 30) });
+  for (let i = 0; i < 9; i++) horde.spawn(Math.random() < 0.3 ? 'corredor' : 'normal', clamp(cx + rand(-1.8, 1.8), -MID, MID), z + rand(-3, 3), { speedMul: 1.1, hpMul: wave.hpMul * (1 + squad.count / 30) });
 }
 
 function setPhase(p) { G.phase = p; G.phaseT = 0; }
@@ -169,8 +172,8 @@ function updateDirector(dt) {
 // Vida del jefe ajustada a la potencia del jugador para que el combate dure lo mismo
 function bossHp() {
   const w = weapon();
-  const dps = w.rate * w.shots * w.damage * powerMult() * 0.7;
-  return Math.round(clamp(dps * 24, 300, 80000));
+  const dps = (w.rate * w.shots + squad.count * Math.min(w.rate, SQUAD.maxRate)) * w.damage * 0.7;
+  return Math.round(clamp(dps * 16, 300, 200000));
 }
 
 // ---------- Combate ----------
@@ -179,6 +182,19 @@ function enemyDown(e) {
   horde.kill(e);
   G.kills++; G.killScore += e.t.score;
   sfx.play('down');
+}
+
+// El daño quita soldados (1 por punto de daño); sin soldados, quita vida al protagonista
+function takeHit(d) {
+  if (G.phase === 'dead' || G.phase === 'won') return;
+  if (squad.count > 0) {
+    const lost = squad.remove(d);
+    for (const m of lost) particles.emit(m.x, 1, m.z, 8, [0xffffff, 0x1f5fa8, 0xff7675], 4, 0.5, 0.8);
+    sfx.play('hurt'); G.shake = Math.min(0.5, G.shake + 0.12);
+    floatText('-' + lost.length + ' 👤', 'dmg');
+    return;
+  }
+  hurt(d);
 }
 
 function hurt(d, x, z) {
@@ -216,6 +232,16 @@ function shoot(dt) {
   particles.emit(_muz.x + 0.08, _muz.y + 0.05, _muz.z + 0.25, 1, 0xd4a017, 2.2, 0.5, 0.35, 12);  // casquillo
 }
 
+function squadFire(m) {
+  const w = weapon();
+  const rate = Math.min(w.rate, SQUAD.maxRate);
+  const props = { speed: SHOT.speed, range: SHOT.range, size: 0.9, color: w.color };
+  const b = bullets.fire(m.x + 0.3, 1.38, m.z - 0.9, 0, -1, props, w.damage, 0);
+  if (b) b.splash = w.splash || 0;
+  if (Math.random() < 0.3) flashes.emit(m.x + 0.3, 1.38, m.z - 1, 0.5, w.color, 0.05, 0.4);
+  return 1 / rate;
+}
+
 const SPARK = [0xfff3b0, 0xffd166, 0xffffff, 0xffa040];
 function impact(x, y, z, dmg) {
   flashes.emit(x, y, z, 0.7 + Math.min(1, dmg * 0.08), 0xffd27a, 0.1, 1.4);
@@ -231,6 +257,13 @@ function splashDamage(b, x, z) {
 
 function bulletHit(b, x0, z0, x1, z1) {
   let consumed = false;
+  const bon = bonuses.hitTest(x1, z0, z1);
+  if (bon) {
+    const w = weapon();
+    if (bonuses.addDamage(bon, b.dmg, w.damage * w.shots * BONUS.step * (1 + squad.count / 4), BONUS.max)) sfx.play('hit');
+    flashes.emit(x1, b.y, bon.z + 0.2, 0.6, 0x6ec1ff, 0.08, 1.2);
+    return true;
+  }
   const crate = crates.hitTest(x1, z0, z1);
   if (crate) {
     crate.hp -= b.dmg; crate.pop = 1;
@@ -284,12 +317,12 @@ const bossCb = {
   onSummon: (n, bx, bz) => {
     for (let i = 0; i < n; i++) horde.spawn(Math.random() < 0.35 ? 'corredor' : (Math.random() < 0.15 ? 'agil' : 'normal'), clamp(bx + rand(-6, 6), -6.3, 6.3), bz + rand(0, 6));
   },
-  onHazard: (d) => hurt(d),
+  onHazard: (d) => takeHit(Math.ceil(d / 2)),
   onDefeated: () => win(),
 };
 
 // ---------- Fin de partida ----------
-function finalScore() { return G.killScore + Math.floor(-G.pz) + (G.won ? G.hp * 20 : 0); }
+function finalScore() { return G.killScore + Math.floor(-G.pz) + (G.won ? G.hp * 20 + squad.count * 100 : 0); }
 
 function win() {
   if (G.mode !== 'play') return;
@@ -360,7 +393,7 @@ function updateHud() {
   bon.push(`<i class="b-dmg">DAÑO ${+(w.damage * powerMult()).toFixed(1)}</i>`);
   bon.push(`<i class="b-rate">CADENCIA ${w.rate}/s</i>`);
   bon.push(`<i class="b-multi">DISPAROS x${w.shots}</i>`);
-  if (G.power > 0) bon.push(`<i class="b-pierce">POTENCIA +${G.power}</i>`);
+  bon.push(`<i class="b-pierce">SOLDADOS ${squad.count}</i>`);
   const bh = bon.join('');
   if (cache.bon !== bh) { cache.bon = bh; ui.bonuses.innerHTML = bh; }
   if (boss.active) {
@@ -471,27 +504,32 @@ function step(dt) {
   horde.update(dt, G.px, G.pz, e => particles.emit(e.x, 0.6, e.z, 5, CONFETTI, 3, 0.5, 0.8));
   // contacto con la horda (GDD sección 9)
   if (alive) {
-    horde.query(G.pz - 0.7, G.pz + 1.0, e => {
-      if (Math.abs(e.x - G.px) < 0.4 * e.width * e.scale + PLAYER.radius) {
-        hurt(e.t.contact); horde.kill(e);
+    const depth = squad.count ? slot(squad.count - 1)[1] + 0.6 : 1.0;
+    horde.query(G.pz - 0.7, G.pz + depth, e => {
+      const r = 0.4 * e.width * e.scale;
+      let hit = Math.abs(e.z - G.pz) < 0.85 && Math.abs(e.x - G.px) < r + PLAYER.radius;
+      if (!hit) for (const m of squad.members) if (Math.abs(e.z - m.z) < 0.6 && Math.abs(e.x - m.x) < r + 0.35) { hit = true; break; }
+      if (hit) {
+        takeHit(e.t.contact); horde.kill(e);
         particles.emit(e.x, 1, e.z, 6, [0xffffff, 0xff7675], 4, 0.4, 0.8);
       }
     });
     const car = world.carCollision(G.px, G.pz, PLAYER.radius);
-    if (car) { car.hit = true; hurt(5); sfx.play('car'); particles.emit(G.px, 0.8, G.pz - 1, 12, [0xaaaaaa, 0x666666, 0xffd166], 5, 0.6, 1); }
+    if (car) { car.hit = true; takeHit(5); sfx.play('car'); particles.emit(G.px, 0.8, G.pz - 1, 12, [0xaaaaaa, 0x666666, 0xffd166], 5, 0.6, 1); }
   }
   bullets.update(dt, bulletHit);
   particles.update(dt);
   sparks.update(dt);
   shock.update(dt);
   crates.update(dt, G.pz, G.time);
-  bonuses.update(dt, G.px, G.pz, v => {
-    G.power += v; sfx.play('gate');
-    toast(`+${v} POTENCIA`, '#6ec1ff');
+  bonuses.update(dt, G.px, G.pz, (v, b) => {
+    squad.add(v, G.px, G.pz + 1); sfx.play('gate');
+    toast(`+${v} SOLDADO${v > 1 ? 'S' : ''}`, '#6ec1ff');
     particles.emit(G.px, 1.5, G.pz - 0.5, 14, [0xffffff, 0x9be7ff, 0x1e88ff], 5, 0.6, 0.8);
   });
   boss.update(dt, G.px, G.pz, bossCb);
   hero.update(dt, G.px, G.pz, G.vx, 0, alive);
+  squad.update(dt, G.px, G.pz, alive && G.phase !== 'won' && G.phase !== 'intro' ? squadFire : null);
   if (!alive) { hero.group.rotation.x = Math.max(-1.4, hero.group.rotation.x - dt * 4); }
 
   // cámara de seguimiento con ajuste para el jefe (GDD sección 3)
@@ -537,7 +575,7 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // utilidades de prueba (no afectan al juego)
-window.__rp = { G, horde, boss, startGame, WAVES, renderer, scene, camera, hero, crates, bonuses, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
+window.__rp = { G, horde, boss, startGame, WAVES, renderer, scene, camera, hero, crates, bonuses, squad, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
 
 // Actualización automática: busca versión nueva al abrir y al volver a la app,
 // y recarga una vez cuando el service worker nuevo toma el control.

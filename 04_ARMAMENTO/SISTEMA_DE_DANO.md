@@ -10,7 +10,8 @@ El sistema de vida será proporcional y fácilmente comprensible.
 
 Reglas iniciales:
 
-- Cada enemigo que consigue alcanzar al protagonista provoca una pérdida de 1 punto de vida.
+- **Los soldados hacen de escudo (v0.3 del GDD):** cada golpe recibido elimina primero soldados (1 por enemigo normal, más por enemigos especiales y ataques del jefe). Solo cuando no queda ningún soldado se pierde vida.
+- Cada enemigo que consigue alcanzar al protagonista sin soldados provoca una pérdida de 1 punto de vida.
 - Los enemigos especiales podrán provocar más daño.
 - Determinados ataques de los jefes podrán restar varios puntos.
 - Se podrán recoger potenciadores de recuperación.

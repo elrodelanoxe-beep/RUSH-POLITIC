@@ -61,9 +61,11 @@ La parte estratégica está en el movimiento entre carriles.
 
 **Sustituye a las puertas de selección de la versión 0.1.**
 
-En el carril derecho aparecen bonus con valores como +1, +1, +2, +2, +1… El jugador los recoge tocándolos.
+En el carril derecho aparecen paneles de bonus con valores como +1, +1, +2, +2, +1… (v0.3 del GDD):
 
-Cada punto suma **potencia de fuego**: +4 % de daño para todas las armas. Los puntos se acumulan durante toda la partida.
+- **Disparar al panel hace que su número SUBA** (al revés que las armas del carril izquierdo, que bajan). Cada punto cuesta un poco más que el anterior y el máximo es +8, así que conviene empezar a disparar desde lejos.
+- **Al atravesar el panel se suman tantos soldados como indique** (+N = N soldados). Corren en formación junto al protagonista, llevan la misma arma y disparan recto hacia delante. Máximo 30 soldados.
+- **Proporcionalidad:** cuantos más soldados lleva el jugador, más caro es subir los paneles y más resistentes son las hordas, para que el ejército no rompa el equilibrio.
 
 ## Resumen del ciclo principal
 
