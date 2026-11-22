@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ROAD, PLAYER, CAMERA, WEAPONS, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS } from './config.js';
+import { ROAD, PLAYER, CAMERA, WEAPONS, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION } from './config.js';
 import { World } from './world.js';
 import { Horde } from './enemies.js';
 import { Bullets, Particles, Shockwaves, Flashes } from './combat.js';
@@ -485,6 +485,7 @@ soundBtn.addEventListener('click', () => { sfx.unlock(); sfx.setMuted(!sfx.muted
 paintSound();
 function showBest() { let b = 0; try { b = +(localStorage.getItem('rp_best') || 0); } catch (e) {} $('best').textContent = b ? 'Récord: ' + b.toLocaleString('es-ES') : ''; }
 showBest();
+$('version').textContent = 'Versión ' + GAME_VERSION;
 const standalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches;
 if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) $('installHint').classList.remove('hidden');
 
