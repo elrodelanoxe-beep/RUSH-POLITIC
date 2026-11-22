@@ -20,7 +20,10 @@ const pick = a => a[(Math.random() * a.length) | 0];
 const CENTER_LANE = 1.9; // mitad del carril central (menos margen)
 
 const PARTS = ['pelvis', 'torso', 'head', 'hair', 'cap', 'helmet', 'hood', 'thighL', 'shinL', 'shoeL', 'thighR', 'shinR', 'shoeR',
-  'upperArmL', 'foreArmL', 'handL', 'upperArmR', 'foreArmR', 'handR', 'backpack', 'vest', 'sign', 'flag'];
+  'upperArmL', 'foreArmL', 'handL', 'upperArmR', 'foreArmR', 'handR', 'backpack', 'vest', 'sign', 'flag',
+  'face', 'beard', 'bandana', 'beanie', 'scarf', 'print', 'belt', 'soleL', 'soleR', 'megaphone'];
+const PRINTS = [0xffffff, 0x111111, 0xffd32a, 0xff4d6d, 0x4cc9f0, 0x06d6a0];
+const SCARVES = [0xd7263d, 0x2d3436, 0xf1c40f, 0x6c5ce7, 0x00b894, 0xe17055];
 
 export class Horde {
   constructor(scene) {
@@ -68,7 +71,7 @@ export class Horde {
       phase: Math.random() * 6.28, state: 'run', dieT: 0, flash: 0, vx: 0, recoil: 0,
       weave: Math.random() * 6.28, dodgeCd: 0, yaw: 0, fall: 0,
       top: pick(TOPS), skin: pick(SKIN), pants: pick(PANTS),
-      cap: false, pack: false, sign: false, hood: false, longSleeve: Math.random() < 0.55,
+      cap: false, pack: false, sign: false, hood: false, beanie: false, longSleeve: Math.random() < 0.55,
       flag: typeName === 'lider', helmet: typeName === 'blindado', vest: typeName === 'blindado' || typeName === 'lider',
       wander: (Math.random() - 0.5) * 2, homeX: x,
       aggr: typeName === 'corredor' || typeName === 'lider' ? 1 : 0.35 + Math.random() * 0.65,
@@ -80,7 +83,15 @@ export class Horde {
       if (e.hood) e.longSleeve = true;
       e.pack = Math.random() < 0.45;
       e.sign = Math.random() < 0.2;
+      e.beanie = !e.hood && !e.cap && Math.random() < 0.3;
     }
+    // más variedad (v0.8): barba, cara tapada, bufanda, camiseta estampada, megáfono
+    e.beard = !e.helmet && Math.random() < 0.3;
+    e.bandana = Math.random() < (typeName === 'blindado' || typeName === 'agil' ? 0.6 : 0.22);
+    if (e.bandana) e.beard = false;
+    e.scarf = !e.vest && Math.random() < 0.25;
+    e.print = !e.vest && Math.random() < 0.5;
+    e.megaphone = !e.sign && !e.flag && Math.random() < 0.08;
     if (typeName === 'grande') e.top = pick([0x7f8c8d, 0x5d4037, 0x2c3e50, 0x6d214f]);
     if (typeName === 'corredor') e.top = pick([0xe74c3c, 0xf1c40f, 0x00cec9, 0xff7675]);
     this._paint(e);
@@ -105,6 +116,9 @@ export class Horde {
     set('hair', pick(HAIR)); set('cap', pick(CAPS)); set('helmet', 0x2f3640);
     set('backpack', pick(PACKS)); set('vest', e.flag ? 0xffd32a : 0x3d4a57);
     set('sign', pick(SIGNS)); set('flag', 0xd7263d);
+    set('face', 0x1c1410); set('beard', pick(HAIR)); set('bandana', pick([0x111111, 0x2d3436, 0xd7263d, 0x1e3799, 0xf5f5f5]));
+    set('beanie', pick(CAPS)); set('scarf', pick(SCARVES)); set('print', pick(PRINTS)); set('belt', 0x2a1d14);
+    const sole = Math.random() < 0.7 ? 0xf2f2f2 : 0x222222; set('soleL', sole); set('soleR', sole); set('megaphone', 0xf5f5f5);
     for (const [, im] of this.partList) im.instanceColor.needsUpdate = true;
   }
 
@@ -202,7 +216,13 @@ export class Horde {
     for (const [k, im] of this.partList) {
       let show = true;
       switch (k) {
-        case 'hair': show = !e.cap && !e.helmet && !e.hood; break;
+        case 'hair': show = !e.cap && !e.helmet && !e.hood && !e.beanie; break;
+        case 'beanie': show = e.beanie; break;
+        case 'beard': show = e.beard; break;
+        case 'bandana': show = e.bandana; break;
+        case 'scarf': show = e.scarf; break;
+        case 'print': show = e.print; break;
+        case 'megaphone': show = e.megaphone && running; break;
         case 'cap': show = e.cap; break;
         case 'helmet': show = e.helmet; break;
         case 'hood': show = e.hood; break;

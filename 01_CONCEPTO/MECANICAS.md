@@ -63,23 +63,24 @@ La parte estratégica está en el movimiento entre carriles.
 
 En el carril derecho aparecen paneles de bonus con valores como +1, +1, +2, +2, +1… (v0.3 del GDD):
 
-- **Cada impacto de tus disparos suma 1 al número del panel** y se ve al instante (las balas de los soldados lo atraviesan; cada soldado dispara al 60 % del daño de tu arma) (al revés que las armas del carril izquierdo, que bajan). Cada panel tiene un máximo según la dificultad.
-- **Tipos de panel (v0.4 del GDD):**
-  - **Azul (+N):** al atravesarlo se suman N **soldados**. Corren en formación junto al protagonista, llevan la misma arma y disparan recto hacia delante.
+- **Cada impacto de tus disparos suma 1 al número del panel** y se ve al instante (al revés que las armas del carril izquierdo, que bajan). **No hay máximo:** si el ejército llena la pantalla, se llena. Las balas de los soldados atraviesan los paneles.
+- **Valores iniciales (v0.5 del GDD):** los paneles azules y verdes siempre empiezan en **+1**; los rojos empiezan en negativo (de −4 a −20 en Normal). Nunca aparece un +2 o más de inicio: el número solo crece disparando.
+- **Tipos de panel:**
+  - **Azul (+N):** al atravesarlo se suman N **soldados**. Corren en formación junto al protagonista (la formación se ensancha cuanto más grande es), llevan la misma arma y disparan recto hacia delante con **menos alcance** que el protagonista.
   - **Rojo (−N):** empieza en negativo y hay que dispararle mucho para llevarlo a positivo (cuanto más grande es tu ejército, más negativo aparece). Si lo tocas mientras sigue en negativo, **pierdes N soldados** (o vida si no te quedan). Al pasar a positivo se vuelve azul.
   - **Verde (+N ❤):** recupera N puntos de vida.
-- **Proporcionalidad:** cuantos más soldados lleva el jugador, más resistentes son las hordas y más negativos los paneles rojos, para que el ejército no rompa el equilibrio.
+- **Proporcionalidad:** cuantos más soldados lleva el jugador, más resistentes y numerosas son las hordas y más negativos los paneles rojos. Por encima de 50 soldados, la potencia de fuego del ejército crece más despacio (raíz cuadrada).
 - Las **armas especiales** del carril izquierdo son **amarillas** para distinguirlas de los paneles de soldados.
 
-### 8.3. Niveles de dificultad (v0.4 del GDD)
+### 8.3. Niveles de dificultad (v0.5 del GDD)
 
 Se eligen en el menú principal:
 
-| Nivel | Vida | Máx. soldados | Panel máx. | Paneles rojos | Hordas | Jefe |
+| Nivel | Vida | Paneles rojos | Hordas (resistencia) | Hordas (aparición) | Minijefes | Jefe |
 |---|---|---|---|---|---|---|
-| Fácil | 150 | 40 | +12 | 20 % (−3 a −6) | 70 % | 70 % |
-| Normal | 100 | 30 | +9 | 35 % (−6 a −12) | 100 % | 100 % |
-| Difícil | 70 | 24 | +7 | 50 % (−10 a −18) | 135 %, +20 % de aparición | 115 % |
+| Fácil | 150 | 30 % (−4 a −10) | 80 % | 90 % | 80 % | 80 % |
+| Normal | 100 | 45 % (−4 a −20) | 125 % | 115 % | 100 % | 100 % |
+| Difícil | 70 | 50 % (−6 a −22) | 135 % | 120 % | 100 % | 125 % |
 
 ## Resumen del ciclo principal
 

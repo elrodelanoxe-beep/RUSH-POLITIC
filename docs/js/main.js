@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { ROAD, PLAYER, CAMERA, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION, LANES, WEAPON_TIERS, SHOT, BONUS, CRATE, SQUAD, DIFFICULTY } from './config.js';
+import { ROAD, PLAYER, CAMERA, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION, LANES, WEAPON_TIERS, SHOT, BONUS, CRATE, SQUAD, DIFFICULTY, MINIBOSS } from './config.js';
 import { Squad, slot } from './squad.js';
 import { World } from './world.js';
 import { Horde } from './enemies.js';
 import { Bullets, Particles, Shockwaves, Flashes } from './combat.js';
 import { PlayerModel, FLASH_TEX, GLOW_TEX } from './player.js';
 import { WeaponCrates, BonusTokens } from './pickups.js';
-import { Boss } from './boss.js';
+import { Boss, Brute } from './boss.js';
 import { Sfx } from './audio.js';
 
 const $ = id => document.getElementById(id);
@@ -46,6 +46,7 @@ const crates = new WeaponCrates(scene);
 const bonuses = new BonusTokens(scene);
 const squad = new Squad(scene);
 const boss = new Boss(scene);
+const minis = [new Brute(scene, 'porra'), new Brute(scene, 'botella')];
 const sfx = new Sfx();
 
 // ---------- Estado de la partida ----------
@@ -63,15 +64,14 @@ const G = {
 };
 
 function resetGame() {
-  horde.clear(); bullets.clear(); particles.clear(); sparks.clear(); flashes.clear(); muzzleFx.clear(); crates.clear(); bonuses.clear(); squad.clear(); world.clearCars(); boss.reset();
+  horde.clear(); bullets.clear(); particles.clear(); sparks.clear(); flashes.clear(); muzzleFx.clear(); crates.clear(); bonuses.clear(); squad.clear(); world.clearCars(); boss.reset(); for (const m of minis) m.reset();
   Object.assign(G, {
     phase: 'intro', phaseT: 0, px: 0, pz: 0, vx: 0, targetX: 0, aimYaw: 0,
     hp: D().hp, maxHp: D().hp, kills: 0, killScore: 0, time: 0,
     tier: 0, power: 0, bonusIdx: 0, fireCd: 0, nextCrateZ: -CRATE.firstAt, nextBonusZ: -40,
-    waveIndex: 0, spawnAcc: 0, leadersDone: 0, shake: 0, camBoss: 0, endT: 0, won: false,
+    waveIndex: 0, spawnAcc: 0, leadersDone: 0, miniDone: false, minisBeaten: 0, shake: 0, camBoss: 0, endT: 0, won: false,
   });
   hero.setWeapon(WEAPON_TIERS[0].model); squad.setWeapon(WEAPON_TIERS[0].model);
-  squad.cap = D().squadMax;
   if (SQUAD.start) squad.add(SQUAD.start, 0, 0);
   hero.group.rotation.set(0, 0, 0);
   world.segments.forEach((s, i) => s.position.z = 30 - i * ROAD.segmentLength);
@@ -129,7 +129,8 @@ function spawnLeaderGroup(wave) {
 }
 
 // Proporcionalidad: la horda aguanta más cuantos más soldados llevas y según la dificultad
-function hordeMul(wave) { return wave.hpMul * D().horde * (1 + squad.count / D().squadScale); }
+function squadEff() { return squad.count <= SQUAD.fullFire ? squad.count : SQUAD.fullFire * Math.sqrt(squad.count / SQUAD.fullFire); }
+function hordeMul(wave) { return wave.hpMul * D().horde * (1 + squadEff() / D().squadScale); }
 
 function setPhase(p) { G.phase = p; G.phaseT = 0; }
 
@@ -141,10 +142,19 @@ function updateDirector(dt) {
       if (G.phaseT > 2.2) { setPhase('wave'); banner('OLEADA 1', 'Izquierda: armas · Centro: horda · Derecha: bonus'); }
       break;
     case 'wave': {
-      G.spawnAcc += W.rate * D().rate * dt * (0.7 + 0.6 * G.phaseT / W.duration);
+      G.spawnAcc += W.rate * D().rate * (1 + squad.count / D().squadSpawn) * dt * (0.7 + 0.6 * G.phaseT / W.duration);
       while (G.spawnAcc >= 1) G.spawnAcc -= spawnOne(W);
       const leaders = W.leaders || 0;
       if (G.leadersDone < leaders && G.phaseT > (G.leadersDone + 0.5) * W.duration / leaders) { G.leadersDone++; spawnLeaderGroup(W); }
+      // minijefe a mitad de oleada (desde la 2ª)
+      if (!G.miniDone && G.waveIndex >= MINIBOSS.fromWave && G.phaseT > W.duration * MINIBOSS.at) {
+        G.miniDone = true;
+        const m = minis[G.waveIndex % 2];
+        if (!m.active) {
+          m.start(G.px, G.pz, Math.round(bossHp() / D().boss * MINIBOSS.hpFactor * D().mini));
+          banner('¡MINIJEFE!', m.name); sfx.play('boss');
+        }
+      }
       if (G.phaseT > W.duration) {
         if (G.waveIndex >= WAVES.length - 1) { setPhase('preboss'); banner('¡ATENCIÓN!', 'Algo grande se acerca...'); }
         else setPhase('break');
@@ -153,7 +163,7 @@ function updateDirector(dt) {
     }
     case 'break':
       if (G.phaseT > BREAK_DURATION) {
-        G.waveIndex++; G.leadersDone = 0;
+        G.waveIndex++; G.leadersDone = 0; G.miniDone = false;
         setPhase('wave');
         banner('OLEADA ' + (G.waveIndex + 1), G.waveIndex === WAVES.length - 1 ? 'Última oleada' : '');
       }
@@ -172,14 +182,13 @@ function updateDirector(dt) {
   }
   // carril derecho: bonus +1 / +2
   if (G.phase !== 'boss' && G.pz < G.nextBonusZ + 110) {
-    const v = BONUS.sequence[G.bonusIdx++ % BONUS.sequence.length], d = D();
-    const roll = G.bonusIdx <= 1 ? 1 : Math.random();
-    if (roll < BONUS.healChance) bonuses.spawn(G.nextBonusZ, v, 'heal', d.bonusMax * BONUS.healMul);
+    const d = D(), roll = G.bonusIdx++ < 1 ? 1 : Math.random();
+    if (roll < BONUS.healChance) bonuses.spawn(G.nextBonusZ, 1, 'heal', Infinity);
     else if (roll < BONUS.healChance + d.negChance) {
       // los negativos cuestan más: empiezan más abajo cuanto más grande es tu ejército
-      const neg = Math.round(rand(...d.negStart) + squad.count * 0.5);
-      bonuses.spawn(G.nextBonusZ, -neg, 'minus', d.bonusMax);
-    } else bonuses.spawn(G.nextBonusZ, v, 'plus', d.bonusMax);
+      const neg = Math.round(rand(...d.negStart) + squad.count * 0.3);
+      bonuses.spawn(G.nextBonusZ, -neg, 'minus', Infinity);
+    } else bonuses.spawn(G.nextBonusZ, 1, 'plus', Infinity);
     G.nextBonusZ -= rand(...BONUS.every);
   }
 }
@@ -187,7 +196,8 @@ function updateDirector(dt) {
 // Vida del jefe ajustada a la potencia del jugador para que el combate dure lo mismo
 function bossHp() {
   const w = weapon();
-  const dps = (w.rate * w.shots + squad.count * Math.min(w.rate, SQUAD.maxRate) * SQUAD.damage) * w.damage * 0.7;
+  const eff = squadEff();
+  const dps = (w.rate * w.shots + eff * Math.min(w.rate, SQUAD.maxRate) * SQUAD.damage) * w.damage * 0.7;
   return Math.round(clamp(dps * 16 * D().boss, 300, 200000));
 }
 
@@ -249,9 +259,12 @@ function shoot(dt) {
 
 function squadFire(m) {
   const w = weapon();
-  const rate = Math.min(w.rate, SQUAD.maxRate);
-  const props = { speed: SHOT.speed, range: SHOT.range, size: 0.9, color: w.color };
-  const b = bullets.fire(m.x + 0.3, 1.38, m.z - 0.9, 0, -1, props, w.damage * SQUAD.damage, 0);
+  // con muchos soldados disparan menos balas pero más fuertes (mismo daño total, mejor rendimiento)
+  // y por encima de 50 soldados la potencia total crece más despacio (raíz cuadrada) para mantener el equilibrio
+  const k = Math.max(1, squad.count / SQUAD.fullFire);
+  const rate = Math.min(w.rate, SQUAD.maxRate) / k;
+  const props = { speed: SHOT.speed, range: SQUAD.range, size: 0.9, color: w.color };
+  const b = bullets.fire(m.x + 0.3, 1.38, m.z - 0.9, 0, -1, props, w.damage * SQUAD.damage * Math.sqrt(k), 0);
   if (b) { b.splash = w.splash || 0; b.ally = true; }
   if (Math.random() < 0.3) flashes.emit(m.x + 0.3, 1.38, m.z - 1, 0.5, w.color, 0.05, 0.4);
   return 1 / rate;
@@ -310,7 +323,18 @@ function bulletHit(b, x0, z0, x1, z1) {
     consumed = true; return true;
   });
   if (consumed) return true;
-  if (boss.vulnerable && z1 <= boss.z + 1 && Math.abs(x1 - boss.x) < BOSS.radius) {
+  for (const m of minis) {
+    if (m.vulnerable && z1 <= m.z + 0.6 && z0 >= m.z - 2 && Math.abs(x1 - m.x) < m.radius) {
+      impact(x1, b.y + rand(0.5, 2.5), m.z + 0.8, b.dmg); sfx.play('hit');
+      if (m.damage(b.dmg)) {
+        G.killScore += 500; G.minisBeaten++; sfx.play('win');
+        banner('¡MINIJEFE DERROTADO!', m.name);
+        particles.emit(m.x, 2, m.z, 30, CONFETTI, 8, 1.2, 1.4, 6);
+      }
+      return true;
+    }
+  }
+  if (boss.vulnerable && z1 <= boss.z + 1 && z0 >= boss.z - 3 && Math.abs(x1 - boss.x) < BOSS.radius) {
     impact(x1, b.y + rand(1, 4), boss.z + 2, b.dmg);
     sfx.play('hit');
     if (boss.damage(b.dmg)) {
@@ -325,16 +349,30 @@ function bulletHit(b, x0, z0, x1, z1) {
   return false;
 }
 
+// Golpe cuerpo a cuerpo: caen los soldados que estén en la zona roja; si el protagonista está dentro, recibe el golpe
+function meleeStrike(zone, dmg) {
+  const inZone = (x, z) => Math.abs(x - zone.x) < zone.w / 2 + 0.2 && z >= zone.z0 - 0.5 && z <= zone.z1 + 0.5;
+  // cada golpe derriba como mucho 'dmg' soldados de la zona (proporcional)
+  let n = 0;
+  const lost = squad.removeWhere(m => n < dmg && inZone(m.x, m.z) && ++n);
+  for (const m of lost) particles.emit(m.x, 1, m.z, 6, [0xffffff, 0x1f5fa8, 0xff7675], 4, 0.5, 0.8);
+  if (lost.length) floatText('-' + lost.length + ' 👤', 'dmg');
+  G.shake = Math.min(0.7, G.shake + 0.35);
+  shock.emit(zone.x, (zone.z0 + zone.z1) / 2, zone.w * 0.8, 0xff4d6d, 0.35);
+  sfx.play('car');
+  if (inZone(G.px, G.pz)) takeHit(dmg);
+}
+const summon = (n, bx, bz) => {
+  for (let i = 0; i < n; i++) horde.spawn(Math.random() < 0.35 ? 'corredor' : (Math.random() < 0.15 ? 'agil' : 'normal'), clamp(bx + rand(-6, 6), -6.3, 6.3), bz - rand(2, 8), { hpMul: hordeMul(WAVES[WAVES.length - 1]) * 0.5 });
+};
 const bossCb = {
   onFight: () => {},
-  onShout: () => sfx.play('shout'),
-  onPamphlet: () => {},
-  onSummon: (n, bx, bz) => {
-    for (let i = 0; i < n; i++) horde.spawn(Math.random() < 0.35 ? 'corredor' : (Math.random() < 0.15 ? 'agil' : 'normal'), clamp(bx + rand(-6, 6), -6.3, 6.3), bz + rand(0, 6));
-  },
-  onHazard: (d) => takeHit(Math.ceil(d / 2)),
+  onWindup: () => sfx.play('shout'),
+  onStrike: meleeStrike,
+  onSummon: summon,
   onDefeated: () => win(),
 };
+const miniCb = { onWindup: () => sfx.play('shout'), onStrike: meleeStrike };
 
 // ---------- Fin de partida ----------
 function finalScore() { return G.killScore + Math.floor(-G.pz) + (G.won ? G.hp * 20 + squad.count * 100 : 0); }
@@ -359,7 +397,7 @@ function showEnd(victory) {
   const record = score > best;
   ui.endTitle.textContent = victory ? '¡VICTORIA!' : 'DERROTA';
   ui.endTitle.className = 'title ' + (victory ? 'win' : 'lose');
-  ui.endSub.textContent = victory ? 'Has silenciado a ' + BOSS.name + '.' : 'La horda te ha alcanzado.';
+  ui.endSub.textContent = victory ? 'Has derrotado a ' + BOSS.name + '.' : 'La horda te ha alcanzado.';
   ui.endStats.innerHTML = `
     <div><span>Puntuación</span><b>${score.toLocaleString('es-ES')}</b></div>
     <div><span>Récord</span><b>${Math.max(best, score).toLocaleString('es-ES')}${record ? ' ★' : ''}</b></div>
@@ -375,7 +413,7 @@ function showEnd(victory) {
 const ui = {
   hud: $('hud'), hpFill: $('hpFill'), hpText: $('hpText'), wave: $('wave'), kills: $('kills'), score: $('score'), dist: $('dist'),
   progFill: $('progFill'), weapon: $('weapon'), ammo: $('ammo'), bonuses: $('bonuses'),
-  bossBar: $('bossBar'), bossFill: $('bossFill'), banner: $('banner'), toasts: $('toasts'), vignette: $('vignette'),
+  bossBar: $('bossBar'), bossFill: $('bossFill'), bossName: $('bossName'), banner: $('banner'), toasts: $('toasts'), vignette: $('vignette'),
   start: $('start'), pause: $('pause'), end: $('end'), endTitle: $('endTitle'), endSub: $('endSub'), endStats: $('endStats'),
 };
 const cache = {};
@@ -411,8 +449,11 @@ function updateHud() {
   bon.push(`<i class="b-pierce">SOLDADOS ${squad.count}</i>`);
   const bh = bon.join('');
   if (cache.bon !== bh) { cache.bon = bh; ui.bonuses.innerHTML = bh; }
-  if (boss.active) {
-    const bp = Math.round(boss.hp / boss.maxHp * 1000);
+  const big = boss.active ? boss : minis.find(m => m.active);
+  ui.bossBar.classList.toggle('hidden', !big);
+  if (big) {
+    setText(ui.bossName, 'bossName', big.name);
+    const bp = Math.round(big.hp / big.maxHp * 1000);
     if (cache.boss !== bp) { cache.boss = bp; ui.bossFill.style.transform = `scaleX(${bp / 1000})`; }
   }
 }
@@ -484,7 +525,7 @@ $('playBtn').addEventListener('click', startGame);
 function paintDiff() {
   for (const b of document.querySelectorAll('#diff button')) b.classList.toggle('on', b.dataset.d === diffKey);
   const d = D();
-  $('diffInfo').textContent = `Vida ${d.hp} · Máx. ${d.squadMax} soldados · Paneles hasta +${d.bonusMax}`;
+  $('diffInfo').textContent = `Vida ${d.hp} · Hordas ${Math.round(d.horde * 100)} % · Paneles rojos ${Math.round(d.negChance * 100)} %`;
 }
 function setDiff(k) { if (!DIFFICULTY[k]) return; diffKey = k; try { localStorage.setItem('rp_diff', k); } catch (e) {} paintDiff(); }
 for (const b of document.querySelectorAll('#diff button')) b.addEventListener('click', () => setDiff(b.dataset.d));
@@ -527,7 +568,7 @@ function step(dt) {
   horde.update(dt, G.px, G.pz, e => particles.emit(e.x, 0.6, e.z, 5, CONFETTI, 3, 0.5, 0.8));
   // contacto con la horda (GDD sección 9)
   if (alive) {
-    const depth = squad.count ? slot(squad.count - 1)[1] + 0.6 : 1.0;
+    const depth = squad.count ? slot(squad.count - 1, squad.count)[1] + 0.6 : 1.0;
     horde.query(G.pz - 0.7, G.pz + depth, e => {
       const r = 0.4 * e.width * e.scale;
       let hit = Math.abs(e.z - G.pz) < 0.85 && Math.abs(e.x - G.px) < r + PLAYER.radius;
@@ -564,6 +605,7 @@ function step(dt) {
     }
   });
   boss.update(dt, G.px, G.pz, bossCb);
+  for (const m of minis) m.update(dt, G.px, G.pz, miniCb);
   hero.update(dt, G.px, G.pz, G.vx, 0, alive);
   squad.update(dt, G.px, G.pz, alive && G.phase !== 'won' && G.phase !== 'intro' ? squadFire : null);
   if (!alive) { hero.group.rotation.x = Math.max(-1.4, hero.group.rotation.x - dt * 4); }
@@ -611,7 +653,7 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // utilidades de prueba (no afectan al juego)
-window.__rp = { G, horde, boss, startGame, setDiff, WAVES, WT: WEAPON_TIERS, renderer, scene, camera, hero, crates, bonuses, squad, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
+window.__rp = { G, horde, boss, minis, startGame, setDiff, WAVES, WT: WEAPON_TIERS, renderer, scene, camera, hero, crates, bonuses, squad, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
 
 // Actualización automática: busca versión nueva al abrir y al volver a la app,
 // y recarga una vez cuando el service worker nuevo toma el control.
