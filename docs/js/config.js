@@ -4,7 +4,7 @@
 
 // Versión del juego que se muestra en el menú. Súbela con cada cambio publicado
 // (y también VERSION en sw.js) para comprobar en el móvil qué versión ha cargado.
-export const GAME_VERSION = '0.5';
+export const GAME_VERSION = '0.6';
 
 export const ROAD = {
   halfWidth: 7,        // anchura de la calzada: 14 m
@@ -47,8 +47,11 @@ export const WEAPON_TIERS = [
 ];
 export const SHOT = { speed: 90, range: 60, spacing: 0.38 };
 
-// Bonus del carril derecho: se tocan para cogerlos. Cada punto = +4 % de daño.
-export const BONUS = { sequence: [1, 1, 2, 2, 1, 3, 1, 2, 2, 3], perPoint: 0.04, every: [42, 60] };
+// Paneles del carril derecho: empiezan en +1/+2, suben al dispararles y al tocarlos
+// dan ese número de soldados. step = disparos del protagonista para subir +1.
+export const BONUS = { sequence: [1, 1, 2, 1, 2, 2, 1, 3], every: [42, 60], step: 3, max: 8 };
+// Soldados: disparan recto con el arma del protagonista (cadencia máxima por soldado).
+export const SQUAD = { maxRate: 5, start: 0 };
 export const CRATE = { every: [115, 140], firstAt: 55 };
 
 // Tres armas iniciales (GDD sección 17, punto 12)

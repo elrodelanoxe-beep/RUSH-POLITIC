@@ -115,7 +115,7 @@ export class WeaponCrates {
   }
 }
 
-// Carril derecho: bonus +1 / +2 que se cogen al tocarlos
+// Carril derecho: paneles +1 que suben al dispararles y se cogen al tocarlos (dan soldados)
 export class BonusTokens {
   constructor(scene) {
     this.pool = [];
@@ -135,13 +135,35 @@ export class BonusTokens {
   }
   spawn(z, value) {
     const b = this.pool.find(p => !p.active); if (!b) return null;
-    Object.assign(b, { active: true, z, x: LANES.right, value, used: false, fade: 0 });
-    const ctx = b.canvas.getContext('2d');
-    glassPanel(ctx, b.canvas.width, b.canvas.height, '#1e88ff');
-    bigText(ctx, '+' + value, b.canvas.width / 2, b.canvas.height / 2 + 4, 130, b.canvas.width - 40);
-    b.tex.needsUpdate = true;
+    Object.assign(b, { active: true, z, x: LANES.right, value, acc: 0, used: false, fade: 0, pop: 0 });
+    this._draw(b);
     b.g.position.set(b.x, 0, z); b.g.visible = true; b.panel.scale.setScalar(1); b.mat.opacity = 1;
     return b;
+  }
+  _draw(b) {
+    const ctx = b.canvas.getContext('2d');
+    glassPanel(ctx, b.canvas.width, b.canvas.height, '#1e88ff');
+    bigText(ctx, '+' + b.value, b.canvas.width / 2, b.canvas.height / 2 + 4, 130, b.canvas.width - 40);
+    b.tex.needsUpdate = true;
+  }
+  // al dispararle, el número sube (+1 cada 'step' de daño)
+  hitTest(x, z0, z1) {
+    for (const b of this.pool) {
+      if (!b.active || b.used) continue;
+      if (Math.abs(x - b.x) < LANES.width / 2 - 0.3 && z1 <= b.z + 0.3 && z0 >= b.z - 0.3) return b;
+    }
+    return null;
+  }
+  addDamage(b, dmg, step, max) {
+    const BONUS_GROWTH = 0.6;
+    if (b.value >= max) return false;
+    b.acc += dmg; b.pop = 1;
+    let changed = false;
+    // cada punto cuesta más que el anterior (proporcional)
+    let cost = step * (1 + b.value * BONUS_GROWTH);
+    while (b.acc >= cost && b.value < max) { b.acc -= cost; b.value++; changed = true; cost = step * (1 + b.value * BONUS_GROWTH); }
+    if (changed) this._draw(b);
+    return changed;
   }
   clear() { for (const b of this.pool) { b.active = false; b.g.visible = false; } }
   update(dt, px, pz, onTake) {
@@ -151,6 +173,8 @@ export class BonusTokens {
         b.used = true;
         if (Math.abs(px - b.x) < LANES.width / 2 + 0.2) { b.taken = true; onTake(b.value, b); } else b.taken = false;
       }
+      b.pop = Math.max(0, (b.pop || 0) - dt * 6);
+      if (!b.used) b.panel.scale.setScalar(1 + b.pop * 0.05);
       if (b.used) {
         b.fade += dt;
         if (b.taken) { b.panel.scale.setScalar(1 + b.fade * 2); b.mat.opacity = Math.max(0, 1 - b.fade * 3); }

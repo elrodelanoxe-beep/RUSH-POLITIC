@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.2 – Mecánica de tres carriles |
+| Versión | 0.3 – Soldados aliados y jefe final |
 | Estado | Diseño conceptual |
 | Tipo | Videojuego 3D de acción, supervivencia y runner |
 | Plataforma objetivo | Móviles (Android / iOS) |
@@ -282,9 +282,11 @@ El jugador deberá desplazarse lateralmente para recogerlas.
 
 **Sustituye a las puertas de selección de la versión 0.1.**
 
-En el carril derecho aparecen bonus con valores como +1, +1, +2, +2, +1… El jugador los recoge tocándolos.
+En el carril derecho aparecen paneles de bonus con valores como +1, +1, +2, +2, +1… (v0.3 del GDD):
 
-Cada punto suma **potencia de fuego**: +4 % de daño para todas las armas. Los puntos se acumulan durante toda la partida.
+- **Disparar al panel hace que su número SUBA** (al revés que las armas del carril izquierdo, que bajan). Cada punto cuesta un poco más que el anterior y el máximo es +8, así que conviene empezar a disparar desde lejos.
+- **Al atravesar el panel se suman tantos soldados como indique** (+N = N soldados). Corren en formación junto al protagonista, llevan la misma arma y disparan recto hacia delante. Máximo 30 soldados.
+- **Proporcionalidad:** cuantos más soldados lleva el jugador, más caro es subir los paneles y más resistentes son las hordas, para que el ejército no rompa el equilibrio.
 
 ## 9. SISTEMA DE VIDA Y DAÑO
 
@@ -294,7 +296,8 @@ El sistema de vida será proporcional y fácilmente comprensible.
 
 Reglas iniciales:
 
-- Cada enemigo que consigue alcanzar al protagonista provoca una pérdida de 1 punto de vida.
+- **Los soldados hacen de escudo (v0.3 del GDD):** cada golpe recibido elimina primero soldados (1 por enemigo normal, más por enemigos especiales y ataques del jefe). Solo cuando no queda ningún soldado se pierde vida.
+- Cada enemigo que consigue alcanzar al protagonista sin soldados provoca una pérdida de 1 punto de vida.
 - Los enemigos especiales podrán provocar más daño.
 - Determinados ataques de los jefes podrán restar varios puntos.
 - Se podrán recoger potenciadores de recuperación.
@@ -319,6 +322,8 @@ Características:
 - Mayor resistencia.
 - Ataques especiales.
 - Comportamientos diferenciados.
+
+**MVP (v0.3 del GDD):** tras la oleada 5 aparece el jefe final EL GRAN PORTAVOZ. Sus gritos y panfletos eliminan soldados primero; su vida se ajusta a la potencia de fuego del jugador (arma + soldados) para que el combate dure lo mismo con cualquier ejército.
 - Secuencia de presentación.
 - Recompensas especiales al derrotarlos.
 

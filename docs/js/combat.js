@@ -7,7 +7,7 @@ const _fwd = new THREE.Vector3(0, 0, 1), _v = new THREE.Vector3();
 
 // Proyectiles con object pooling (GDD sección 15)
 export class Bullets {
-  constructor(scene, max = 500) {
+  constructor(scene, max = 800) {
     // núcleo brillante + halo de color: trazadoras visibles
     const core = new THREE.BoxGeometry(0.045, 0.045, 1.5); core.translate(0, 0, -0.5);
     const glow = new THREE.BoxGeometry(0.16, 0.16, 2.3); glow.translate(0, 0, -0.8);
