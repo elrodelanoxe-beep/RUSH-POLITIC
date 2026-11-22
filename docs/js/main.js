@@ -198,7 +198,7 @@ function bossHp() {
   const w = weapon();
   const eff = squadEff();
   const dps = (w.rate * w.shots + eff * Math.min(w.rate, SQUAD.maxRate) * SQUAD.damage) * w.damage * 0.7;
-  return Math.round(clamp(dps * 16 * D().boss, 300, 200000));
+  return Math.round(clamp(dps * 12 * D().boss, 300, 200000));
 }
 
 // ---------- Combate ----------
@@ -265,7 +265,7 @@ function squadFire(m) {
   const rate = Math.min(w.rate, SQUAD.maxRate) / k;
   const props = { speed: SHOT.speed, range: SQUAD.range, size: 0.9, color: w.color };
   const b = bullets.fire(m.x + 0.3, 1.38, m.z - 0.9, 0, -1, props, w.damage * SQUAD.damage * Math.sqrt(k), 0);
-  if (b) { b.splash = w.splash || 0; b.ally = true; }
+  if (b) { b.splash = w.splash || 0; b.ally = true; b.panelW = SQUAD.panelHit * Math.sqrt(k); }
   if (Math.random() < 0.3) flashes.emit(m.x + 0.3, 1.38, m.z - 1, 0.5, w.color, 0.05, 0.4);
   return 1 / rate;
 }
@@ -285,10 +285,10 @@ function splashDamage(b, x, z) {
 
 function bulletHit(b, x0, z0, x1, z1) {
   let consumed = false;
-  // los paneles solo suben con tus disparos (las balas de los soldados los atraviesan)
-  const bon = b.ally ? null : bonuses.hitTest(x1, z0, z1);
+  // los paneles suben 1 por cada disparo tuyo; las balas de los soldados suman una fracción (v0.9)
+  const bon = bonuses.hitTest(x1, z0, z1);
   if (bon) {
-    if (bonuses.hit(bon)) sfx.play('hit');
+    if (bonuses.hit(bon, b.ally ? b.panelW : 1)) sfx.play('hit');
     flashes.emit(x1, b.y, bon.z + 0.2, 0.6, 0x6ec1ff, 0.08, 1.2);
     return true;
   }
@@ -603,7 +603,8 @@ function step(dt) {
       particles.emit(G.px, 1.5, G.pz - 0.5, 14, [0xffffff, 0xff8a80, 0xe53935], 5, 0.6, 0.8);
       takeHit(-v);
     }
-  });
+  }, (x0, x1) => (G.px > x0 && G.px < x1) || squad.members.some(m => m.x > x0 && m.x < x1));
+
   boss.update(dt, G.px, G.pz, bossCb);
   for (const m of minis) m.update(dt, G.px, G.pz, miniCb);
   hero.update(dt, G.px, G.pz, G.vx, 0, alive);

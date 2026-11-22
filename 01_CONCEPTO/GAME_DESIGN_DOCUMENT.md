@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.5 – Paneles sin límite, minijefes y jefe cuerpo a cuerpo |
+| Versión | 0.6 – Ejército ancho y paneles que se cogen con cualquier soldado |
 | Estado | Diseño conceptual |
 | Tipo | Videojuego 3D de acción, supervivencia y runner |
 | Plataforma objetivo | Móviles (Android / iOS) |
@@ -285,7 +285,9 @@ El jugador deberá desplazarse lateralmente para recogerlas.
 
 En el carril derecho aparecen paneles de bonus con valores como +1, +1, +2, +2, +1… (v0.3 del GDD):
 
-- **Cada impacto de tus disparos suma 1 al número del panel** y se ve al instante (al revés que las armas del carril izquierdo, que bajan). **No hay máximo:** si el ejército llena la pantalla, se llena. Las balas de los soldados atraviesan los paneles.
+- **Cada impacto de tus disparos suma 1 al número del panel** y se ve al instante (al revés que las armas del carril izquierdo, que bajan). **No hay máximo:** si el ejército llena la pantalla, se llena.
+- **(v0.6 del GDD)** Las balas de los soldados también suben el panel (0,25 por bala), y basta con que **el protagonista o cualquier soldado** atraviese el panel para cogerlo (o para recibir la penalización si es rojo y sigue en negativo). No hace falta colocarse en un punto exacto.
+- **Formación del ejército:** cuanto más grande, más ancha (de 4 a 16 columnas, casi toda la carretera). Se desplaza para no salirse de la calzada.
 - **Valores iniciales (v0.5 del GDD):** los paneles azules y verdes siempre empiezan en **+1**; los rojos empiezan en negativo (de −4 a −20 en Normal). Nunca aparece un +2 o más de inicio: el número solo crece disparando.
 - **Tipos de panel:**
   - **Azul (+N):** al atravesarlo se suman N **soldados**. Corren en formación junto al protagonista (la formación se ensancha cuanto más grande es), llevan la misma arma y disparan recto hacia delante con **menos alcance** que el protagonista.

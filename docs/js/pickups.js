@@ -138,7 +138,7 @@ export class BonusTokens {
   // kind: 'plus' (soldados), 'minus' (empieza en negativo), 'heal' (vida)
   spawn(z, value, kind = 'plus', max = 9) {
     const b = this.pool.find(p => !p.active); if (!b) return null;
-    Object.assign(b, { active: true, z, x: LANES.right, value, kind, max, used: false, fade: 0, pop: 0, shownCol: '' });
+    Object.assign(b, { active: true, z, x: LANES.right, value, kind, max, acc: 0, used: false, fade: 0, pop: 0, shownCol: '' });
     this._draw(b);
     b.g.position.set(b.x, 0, z); b.g.visible = true; b.panel.scale.setScalar(1); b.mat.opacity = 1;
     return b;
@@ -166,20 +166,26 @@ export class BonusTokens {
     return null;
   }
   // cada impacto suma 1 y el panel se redibuja al momento
+  // n puede ser fraccionario (balas de soldados): se acumula y el número sube al llegar a 1
   hit(b, n = 1) {
     b.pop = 1;
     if (b.value >= b.max) return false;
-    b.value = Math.min(b.max, b.value + n);
+    b.acc = (b.acc || 0) + n;
+    if (b.acc < 1) return false;
+    const add = Math.floor(b.acc); b.acc -= add;
+    b.value = Math.min(b.max, b.value + add);
     this._draw(b);
     return true;
   }
   clear() { for (const b of this.pool) { b.active = false; b.g.visible = false; } }
-  update(dt, px, pz, onTake) {
+  // touch(x0, x1): ¿el protagonista o algún soldado pisa el panel? (v0.9)
+  update(dt, px, pz, onTake, touch) {
     for (const b of this.pool) {
       if (!b.active) continue;
       if (!b.used && pz <= b.z) {
         b.used = true;
-        if (Math.abs(px - b.x) < LANES.width / 2 + 0.2) { b.taken = true; onTake(b.value, b); } else b.taken = false;
+        const x0 = b.x - LANES.width / 2 - 0.2, x1 = b.x + LANES.width / 2 + 0.2;
+        if (touch ? touch(x0, x1) : px > x0 && px < x1) { b.taken = true; onTake(b.value, b); } else b.taken = false;
       }
       b.pop = Math.max(0, (b.pop || 0) - dt * 6);
       if (!b.used) b.panel.scale.setScalar(1 + b.pop * 0.05);
