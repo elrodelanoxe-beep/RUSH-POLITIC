@@ -4,7 +4,19 @@ Videojuego móvil 3D (Android / iOS) de acción, supervivencia y runner de defen
 
 El protagonista avanza automáticamente por una carretera gigantesca sobre un puente que cruza el océano, se desplaza lateralmente para recoger mejoras y dispara de forma automática contra oleadas de manifestantes ficticios que llegan desde el horizonte. Todos los personajes y organizaciones del juego son ficticios, con una estética satírica propia del universo del juego.
 
-**Estado:** diseño conceptual (GDD v0.1).
+**Estado:** diseño conceptual (GDD v0.1) y primera versión jugable (MVP) en formato web.
+
+## Jugar (MVP web)
+
+El MVP de la sección 17 del GDD está en la carpeta [`docs/`](docs/). Es una aplicación web (HTML5 + Three.js) que se puede instalar en el móvil como si fuera una app, a pantalla completa y sin conexión.
+
+- **Publicarlo:** en GitHub, *Settings → Pages → Build and deployment*, elegir *Deploy from a branch*, rama `main` y carpeta `/docs`. La dirección será `https://<usuario>.github.io/<repositorio>/`.
+- **Instalarlo en iPhone:** abrir esa dirección en Safari, pulsar *Compartir* y luego *Añadir a pantalla de inicio*.
+- **Probarlo en el ordenador:** servir la carpeta `docs/` con cualquier servidor web local (por ejemplo `python3 -m http.server` dentro de `docs/`) y abrir `http://localhost:8000`. Se mueve con las flechas o A/D.
+
+Los valores de juego (vida, armas, enemigos, oleadas, jefe) están en [`docs/js/config.js`](docs/js/config.js) para poder ajustarlos sin tocar el resto del código.
+
+> Nota: el GDD propone Unity 3D (sección 15). Para el MVP se ha usado una app web para poder probarlo en el iPhone sin tiendas de aplicaciones ni Mac.
 
 ## Documentación
 
