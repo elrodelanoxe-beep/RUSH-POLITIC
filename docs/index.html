@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>RUSH POLITIC</title>
+  <meta name="description" content="Runner de defensa 3D: avanza por el puente, esquiva y elige mejoras mientras disparas a la horda.">
+  <meta name="theme-color" content="#0d1b2a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Rush Politic">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div class="hp"><div id="hpFill" class="hp-fill"></div><span class="hp-label">VIDA</span><span id="hpText" class="hp-text">100</span></div>
+      <button id="pauseBtn" class="icon-btn" aria-label="Pausa">II</button>
+    </div>
+    <div class="hud-row">
+      <span id="wave" class="pill">OLEADA 1/5</span>
+      <div class="progress"><div id="progFill" class="prog-fill"></div><span class="prog-boss">JEFE</span></div>
+      <span class="pill kills">ELIMINADOS <b id="kills">0</b></span>
+    </div>
+    <div class="hud-row small">
+      <span>PUNTOS <b id="score">0</b></span>
+      <span>DISTANCIA <b id="dist">0 m</b></span>
+    </div>
+    <div id="bossBar" class="boss hidden">
+      <div class="boss-name">EL GRAN PORTAVOZ</div>
+      <div class="boss-track"><div id="bossFill" class="boss-fill"></div></div>
+    </div>
+    <div class="hud-bottom">
+      <div id="bonuses" class="bonuses"></div>
+      <div class="weapon"><span id="weapon">PISTOLA</span><b id="ammo">∞</b></div>
+    </div>
+  </div>
+
+  <div id="vignette"></div>
+  <div id="banner"></div>
+  <div id="toasts"></div>
+
+  <div id="start" class="screen">
+    <div class="card">
+      <div class="logo">RUSH<span>POLITIC</span></div>
+      <p class="tag">Runner de defensa · Nivel 1: Ocean Bridge</p>
+      <ul class="how">
+        <li><b>Arrastra el dedo</b> a izquierda y derecha para moverte.</li>
+        <li><b>Disparas solo</b> a lo que tienes delante.</li>
+        <li>Cruza las <b>puertas</b> para elegir mejoras.</li>
+        <li>Que no te alcance la horda y derrota al <b>jefe final</b>.</li>
+      </ul>
+      <button id="playBtn" class="btn primary">JUGAR</button>
+      <div class="row"><button id="soundBtn" class="btn ghost">🔊 Sonido: sí</button></div>
+      <p id="best" class="best"></p>
+      <p id="installHint" class="hint hidden">Para jugar a pantalla completa: pulsa <b>Compartir</b> y luego <b>Añadir a pantalla de inicio</b>.</p>
+      <p class="legal">Todos los personajes y organizaciones son ficticios y satíricos.</p>
+    </div>
+  </div>
+
+  <div id="pause" class="screen hidden">
+    <div class="card">
+      <div class="title">PAUSA</div>
+      <button id="resumeBtn" class="btn primary">CONTINUAR</button>
+      <button id="quitBtn" class="btn ghost">SALIR AL MENÚ</button>
+    </div>
+  </div>
+
+  <div id="end" class="screen hidden">
+    <div class="card">
+      <div id="endTitle" class="title">VICTORIA</div>
+      <p id="endSub" class="tag"></p>
+      <div id="endStats" class="stats"></div>
+      <button id="againBtn" class="btn primary">JUGAR OTRA VEZ</button>
+      <button id="menuBtn" class="btn ghost">MENÚ</button>
+    </div>
+  </div>
+
+  <noscript>Este juego necesita JavaScript.</noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
