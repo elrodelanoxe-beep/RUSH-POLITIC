@@ -87,3 +87,10 @@ html, body {
 .stats span { display: block; font-size: 11px; color: var(--muted); }
 .stats b { font-size: 20px; }
 .version { font-size: 13px; font-weight: 800; color: #6ec1ff; margin: 10px 0 0; letter-spacing: 1px; }
+
+.diff { display: flex; gap: 6px; margin-top: 12px; }
+.diff button { flex: 1; border: 0; border-radius: 12px; padding: 11px 4px; font: 900 14px inherit; font-family: inherit; color: #fff; background: rgba(255,255,255,.1); }
+.diff button.on[data-d="facil"] { background: #22b24c; }
+.diff button.on[data-d="normal"] { background: #1e88ff; }
+.diff button.on[data-d="dificil"] { background: #e53935; }
+.diff-info { font-size: 12px; opacity: .75; margin: 6px 0 0; text-align: center; }

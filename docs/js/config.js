@@ -4,7 +4,7 @@
 
 // Versión del juego que se muestra en el menú. Súbela con cada cambio publicado
 // (y también VERSION en sw.js) para comprobar en el móvil qué versión ha cargado.
-export const GAME_VERSION = '0.6';
+export const GAME_VERSION = '0.7';
 
 export const ROAD = {
   halfWidth: 7,        // anchura de la calzada: 14 m
@@ -49,9 +49,19 @@ export const SHOT = { speed: 90, range: 60, spacing: 0.38 };
 
 // Paneles del carril derecho: empiezan en +1/+2, suben al dispararles y al tocarlos
 // dan ese número de soldados. step = disparos del protagonista para subir +1.
-export const BONUS = { sequence: [1, 1, 2, 1, 2, 2, 1, 3], every: [42, 60], step: 3, max: 8 };
+// Paneles del carril derecho. Cada impacto suma 1 al número (se ve en cada disparo).
+//  azul  (+N): N soldados · rojo (−N): empieza en negativo; si lo tocas en negativo pierdes N soldados
+//  verde (+N ❤): recupera N puntos de vida
+export const BONUS = { sequence: [1, 1, 2, 1, 2, 2, 1, 3], every: [42, 60], healChance: 0.12, healMul: 2 };
 // Soldados: disparan recto con el arma del protagonista (cadencia máxima por soldado).
-export const SQUAD = { maxRate: 5, start: 0 };
+export const SQUAD = { maxRate: 4, damage: 0.6, start: 0 };  // cada soldado: máx. 4 disparos/s al 60 % del daño de tu arma
+
+// Tres niveles de dificultad (se eligen en el menú)
+export const DIFFICULTY = {
+  facil:   { label: 'FÁCIL',   hp: 150, horde: 0.7,  rate: 0.85, boss: 0.7, bonusMax: 12, squadMax: 40, negChance: 0.2,  negStart: [3, 6],   squadScale: 45 },
+  normal:  { label: 'NORMAL',  hp: 100, horde: 1,    rate: 1,    boss: 1,   bonusMax: 9,  squadMax: 30, negChance: 0.35, negStart: [6, 12],  squadScale: 30 },
+  dificil: { label: 'DIFÍCIL', hp: 70,  horde: 1.35, rate: 1.2,  boss: 1.15, bonusMax: 7,  squadMax: 24, negChance: 0.5,  negStart: [10, 18], squadScale: 22 },
+};
 export const CRATE = { every: [115, 140], firstAt: 55 };
 
 // Tres armas iniciales (GDD sección 17, punto 12)

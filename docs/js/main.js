@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ROAD, PLAYER, CAMERA, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION, LANES, WEAPON_TIERS, SHOT, BONUS, CRATE, SQUAD } from './config.js';
+import { ROAD, PLAYER, CAMERA, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS, GAME_VERSION, LANES, WEAPON_TIERS, SHOT, BONUS, CRATE, SQUAD, DIFFICULTY } from './config.js';
 import { Squad, slot } from './squad.js';
 import { World } from './world.js';
 import { Horde } from './enemies.js';
@@ -49,8 +49,12 @@ const boss = new Boss(scene);
 const sfx = new Sfx();
 
 // ---------- Estado de la partida ----------
+let diffKey = 'normal';
+try { const d = localStorage.getItem('rp_diff'); if (DIFFICULTY[d]) diffKey = d; } catch (e) {}
+const D = () => DIFFICULTY[diffKey];
+
 const G = {
-  mode: 'menu', phase: 'intro', phaseT: 0,
+  mode: 'menu', maxHp: PLAYER.maxHp, phase: 'intro', phaseT: 0,
   px: 0, pz: 0, vx: 0, targetX: 0, aimYaw: 0,
   hp: PLAYER.maxHp, kills: 0, killScore: 0, time: 0,
   tier: 0, power: 0, bonusIdx: 0, fireCd: 0, nextCrateZ: -CRATE.firstAt, nextBonusZ: -40,
@@ -62,11 +66,12 @@ function resetGame() {
   horde.clear(); bullets.clear(); particles.clear(); sparks.clear(); flashes.clear(); muzzleFx.clear(); crates.clear(); bonuses.clear(); squad.clear(); world.clearCars(); boss.reset();
   Object.assign(G, {
     phase: 'intro', phaseT: 0, px: 0, pz: 0, vx: 0, targetX: 0, aimYaw: 0,
-    hp: PLAYER.maxHp, kills: 0, killScore: 0, time: 0,
+    hp: D().hp, maxHp: D().hp, kills: 0, killScore: 0, time: 0,
     tier: 0, power: 0, bonusIdx: 0, fireCd: 0, nextCrateZ: -CRATE.firstAt, nextBonusZ: -40,
     waveIndex: 0, spawnAcc: 0, leadersDone: 0, shake: 0, camBoss: 0, endT: 0, won: false,
   });
   hero.setWeapon(WEAPON_TIERS[0].model); squad.setWeapon(WEAPON_TIERS[0].model);
+  squad.cap = D().squadMax;
   if (SQUAD.start) squad.add(SQUAD.start, 0, 0);
   hero.group.rotation.set(0, 0, 0);
   world.segments.forEach((s, i) => s.position.z = 30 - i * ROAD.segmentLength);
@@ -109,19 +114,22 @@ function spawnOne(wave) {
   const z = G.pz - SPAWN_DISTANCE - rand(0, 10);
   if (Math.random() < wave.groups) {
     const n = 4 + (Math.random() * 5 | 0), cx = rand(-0.8, 0.8), type = pickType(wave.mix);
-    for (let i = 0; i < n; i++) horde.spawn(i === 0 ? type : (Math.random() < 0.7 ? 'normal' : type), clamp(cx + rand(-1.4, 1.4), -MID, MID), z - rand(0, 5), { hpMul: wave.hpMul * (1 + squad.count / 30) });
+    for (let i = 0; i < n; i++) horde.spawn(i === 0 ? type : (Math.random() < 0.7 ? 'normal' : type), clamp(cx + rand(-1.4, 1.4), -MID, MID), z - rand(0, 5), { hpMul: hordeMul(wave) });
     return n;
   }
-  horde.spawn(pickType(wave.mix), rand(-MID, MID), z, { hpMul: wave.hpMul * (1 + squad.count / 30) });
+  horde.spawn(pickType(wave.mix), rand(-MID, MID), z, { hpMul: hordeMul(wave) });
   return 1;
 }
 
 const MID = 1.9;  // mitad útil del carril central
 function spawnLeaderGroup(wave) {
   const z = G.pz - SPAWN_DISTANCE - 6, cx = 0;
-  horde.spawn('lider', cx, z, { hpMul: wave.hpMul * (1 + squad.count / 30) });
-  for (let i = 0; i < 9; i++) horde.spawn(Math.random() < 0.3 ? 'corredor' : 'normal', clamp(cx + rand(-1.8, 1.8), -MID, MID), z + rand(-3, 3), { speedMul: 1.1, hpMul: wave.hpMul * (1 + squad.count / 30) });
+  horde.spawn('lider', cx, z, { hpMul: hordeMul(wave) });
+  for (let i = 0; i < 9; i++) horde.spawn(Math.random() < 0.3 ? 'corredor' : 'normal', clamp(cx + rand(-1.8, 1.8), -MID, MID), z + rand(-3, 3), { speedMul: 1.1, hpMul: hordeMul(wave) });
 }
+
+// Proporcionalidad: la horda aguanta más cuantos más soldados llevas y según la dificultad
+function hordeMul(wave) { return wave.hpMul * D().horde * (1 + squad.count / D().squadScale); }
 
 function setPhase(p) { G.phase = p; G.phaseT = 0; }
 
@@ -133,7 +141,7 @@ function updateDirector(dt) {
       if (G.phaseT > 2.2) { setPhase('wave'); banner('OLEADA 1', 'Izquierda: armas · Centro: horda · Derecha: bonus'); }
       break;
     case 'wave': {
-      G.spawnAcc += W.rate * dt * (0.7 + 0.6 * G.phaseT / W.duration);
+      G.spawnAcc += W.rate * D().rate * dt * (0.7 + 0.6 * G.phaseT / W.duration);
       while (G.spawnAcc >= 1) G.spawnAcc -= spawnOne(W);
       const leaders = W.leaders || 0;
       if (G.leadersDone < leaders && G.phaseT > (G.leadersDone + 0.5) * W.duration / leaders) { G.leadersDone++; spawnLeaderGroup(W); }
@@ -164,7 +172,14 @@ function updateDirector(dt) {
   }
   // carril derecho: bonus +1 / +2
   if (G.phase !== 'boss' && G.pz < G.nextBonusZ + 110) {
-    bonuses.spawn(G.nextBonusZ, BONUS.sequence[G.bonusIdx++ % BONUS.sequence.length]);
+    const v = BONUS.sequence[G.bonusIdx++ % BONUS.sequence.length], d = D();
+    const roll = G.bonusIdx <= 1 ? 1 : Math.random();
+    if (roll < BONUS.healChance) bonuses.spawn(G.nextBonusZ, v, 'heal', d.bonusMax * BONUS.healMul);
+    else if (roll < BONUS.healChance + d.negChance) {
+      // los negativos cuestan más: empiezan más abajo cuanto más grande es tu ejército
+      const neg = Math.round(rand(...d.negStart) + squad.count * 0.5);
+      bonuses.spawn(G.nextBonusZ, -neg, 'minus', d.bonusMax);
+    } else bonuses.spawn(G.nextBonusZ, v, 'plus', d.bonusMax);
     G.nextBonusZ -= rand(...BONUS.every);
   }
 }
@@ -172,8 +187,8 @@ function updateDirector(dt) {
 // Vida del jefe ajustada a la potencia del jugador para que el combate dure lo mismo
 function bossHp() {
   const w = weapon();
-  const dps = (w.rate * w.shots + squad.count * Math.min(w.rate, SQUAD.maxRate)) * w.damage * 0.7;
-  return Math.round(clamp(dps * 16, 300, 200000));
+  const dps = (w.rate * w.shots + squad.count * Math.min(w.rate, SQUAD.maxRate) * SQUAD.damage) * w.damage * 0.7;
+  return Math.round(clamp(dps * 16 * D().boss, 300, 200000));
 }
 
 // ---------- Combate ----------
@@ -236,8 +251,8 @@ function squadFire(m) {
   const w = weapon();
   const rate = Math.min(w.rate, SQUAD.maxRate);
   const props = { speed: SHOT.speed, range: SHOT.range, size: 0.9, color: w.color };
-  const b = bullets.fire(m.x + 0.3, 1.38, m.z - 0.9, 0, -1, props, w.damage, 0);
-  if (b) b.splash = w.splash || 0;
+  const b = bullets.fire(m.x + 0.3, 1.38, m.z - 0.9, 0, -1, props, w.damage * SQUAD.damage, 0);
+  if (b) { b.splash = w.splash || 0; b.ally = true; }
   if (Math.random() < 0.3) flashes.emit(m.x + 0.3, 1.38, m.z - 1, 0.5, w.color, 0.05, 0.4);
   return 1 / rate;
 }
@@ -257,10 +272,10 @@ function splashDamage(b, x, z) {
 
 function bulletHit(b, x0, z0, x1, z1) {
   let consumed = false;
-  const bon = bonuses.hitTest(x1, z0, z1);
+  // los paneles solo suben con tus disparos (las balas de los soldados los atraviesan)
+  const bon = b.ally ? null : bonuses.hitTest(x1, z0, z1);
   if (bon) {
-    const w = weapon();
-    if (bonuses.addDamage(bon, b.dmg, w.damage * w.shots * BONUS.step * (1 + squad.count / 4), BONUS.max)) sfx.play('hit');
+    if (bonuses.hit(bon)) sfx.play('hit');
     flashes.emit(x1, b.y, bon.z + 0.2, 0.6, 0x6ec1ff, 0.08, 1.2);
     return true;
   }
@@ -368,7 +383,7 @@ function setText(el, key, v) { if (cache[key] !== v) { cache[key] = v; el.textCo
 
 const TOTAL_TIME = WAVES.reduce((s, w) => s + w.duration, 0) + BREAK_DURATION * (WAVES.length - 1);
 function updateHud() {
-  const hpPct = G.hp / PLAYER.maxHp;
+  const hpPct = G.hp / G.maxHp;
   if (cache.hp !== G.hp) {
     cache.hp = G.hp;
     ui.hpFill.style.transform = `scaleX(${hpPct})`;
@@ -466,6 +481,14 @@ function startGame() {
 }
 
 $('playBtn').addEventListener('click', startGame);
+function paintDiff() {
+  for (const b of document.querySelectorAll('#diff button')) b.classList.toggle('on', b.dataset.d === diffKey);
+  const d = D();
+  $('diffInfo').textContent = `Vida ${d.hp} · Máx. ${d.squadMax} soldados · Paneles hasta +${d.bonusMax}`;
+}
+function setDiff(k) { if (!DIFFICULTY[k]) return; diffKey = k; try { localStorage.setItem('rp_diff', k); } catch (e) {} paintDiff(); }
+for (const b of document.querySelectorAll('#diff button')) b.addEventListener('click', () => setDiff(b.dataset.d));
+paintDiff();
 $('againBtn').addEventListener('click', startGame);
 $('menuBtn').addEventListener('click', () => { ui.end.classList.add('hidden'); ui.start.classList.remove('hidden'); G.mode = 'menu'; showBest(); });
 $('pauseBtn').addEventListener('click', () => togglePause(true));
@@ -523,9 +546,22 @@ function step(dt) {
   shock.update(dt);
   crates.update(dt, G.pz, G.time);
   bonuses.update(dt, G.px, G.pz, (v, b) => {
-    squad.add(v, G.px, G.pz + 1); sfx.play('gate');
-    toast(`+${v} SOLDADO${v > 1 ? 'S' : ''}`, '#6ec1ff');
-    particles.emit(G.px, 1.5, G.pz - 0.5, 14, [0xffffff, 0x9be7ff, 0x1e88ff], 5, 0.6, 0.8);
+    if (b.kind === 'heal') {
+      if (v <= 0) return;
+      const gain = Math.min(v, G.maxHp - G.hp); G.hp += gain; sfx.play('gate');
+      toast(`+${gain} VIDA`, '#5be37d');
+      particles.emit(G.px, 1.5, G.pz - 0.5, 14, [0xffffff, 0x9cffb0, 0x22b24c], 5, 0.6, 0.8);
+    } else if (v > 0) {
+      const before = squad.count; squad.add(v, G.px, G.pz + 1); sfx.play('gate');
+      const got = squad.count - before;
+      toast(got > 0 ? `+${got} SOLDADO${got > 1 ? 'S' : ''}` : 'EJÉRCITO COMPLETO', '#6ec1ff');
+      particles.emit(G.px, 1.5, G.pz - 0.5, 14, [0xffffff, 0x9be7ff, 0x1e88ff], 5, 0.6, 0.8);
+    } else if (v < 0) {
+      // penalización: tocar un panel negativo quita soldados (o vida si no quedan)
+      G.negHits = (G.negHits || 0) + 1; toast(`¡PANEL NEGATIVO! −${-v}`, '#ff6b6b');
+      particles.emit(G.px, 1.5, G.pz - 0.5, 14, [0xffffff, 0xff8a80, 0xe53935], 5, 0.6, 0.8);
+      takeHit(-v);
+    }
   });
   boss.update(dt, G.px, G.pz, bossCb);
   hero.update(dt, G.px, G.pz, G.vx, 0, alive);
@@ -575,7 +611,7 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // utilidades de prueba (no afectan al juego)
-window.__rp = { G, horde, boss, startGame, WAVES, renderer, scene, camera, hero, crates, bonuses, squad, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
+window.__rp = { G, horde, boss, startGame, setDiff, WAVES, WT: WEAPON_TIERS, renderer, scene, camera, hero, crates, bonuses, squad, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
 
 // Actualización automática: busca versión nueva al abrir y al volver a la app,
 // y recarga una vez cuando el service worker nuevo toma el control.

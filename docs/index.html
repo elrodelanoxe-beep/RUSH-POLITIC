@@ -53,11 +53,15 @@
       <p class="tag">Runner de defensa · Nivel 1: Ocean Bridge</p>
       <ul class="how">
         <li><b>Arrastra el dedo</b> para cambiar de carril. Disparas sin parar hacia delante.</li>
-        <li><b>Izquierda:</b> dispara a las armas hasta dejar su número a 0 y serán tuyas.</li>
+        <li><b>Izquierda:</b> dispara a las armas <b style="color:#ffc400">amarillas</b> hasta dejar su número a 0 y serán tuyas.</li>
         <li><b>Centro:</b> frena a la horda antes de que te alcance.</li>
-        <li><b>Derecha:</b> dispara a los paneles <b>+1 / +2</b> para subirlos y atraviésalos: ganas <b>soldados</b>. Si te golpean, pierdes soldados antes que vida.</li>
+        <li><b>Derecha:</b> cada disparo sube el panel 1 punto. <b style="color:#4aa8ff">Azul</b> = soldados, <b style="color:#5be37d">verde</b> = vida, <b style="color:#ff6b6b">rojo</b> = negativo: súbelo antes de tocarlo o perderás soldados.</li>
         <li>Al final, derrota al <b>jefe</b>.</li>
       </ul>
+      <div id="diff" class="diff">
+        <button data-d="facil">FÁCIL</button><button data-d="normal">NORMAL</button><button data-d="dificil">DIFÍCIL</button>
+      </div>
+      <p id="diffInfo" class="diff-info"></p>
       <button id="playBtn" class="btn primary">JUGAR</button>
       <div class="row"><button id="soundBtn" class="btn ghost">🔊 Sonido: sí</button></div>
       <p id="best" class="best"></p>

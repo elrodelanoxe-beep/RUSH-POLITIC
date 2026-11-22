@@ -3,7 +3,7 @@ import { bodyGeometries, PART_JOINT, PART_GEO, JOINT_INDEX, makePose, runPose, s
 import { gunGeometry, GUN_TIP } from './player.js';
 import { ROAD } from './config.js';
 
-export const MAX_SQUAD = 30;
+export const MAX_SQUAD = 40;
 const PARTS = ['pelvis', 'torso', 'head', 'helmet', 'thighL', 'shinL', 'shoeL', 'thighR', 'shinR', 'shoeR',
   'upperArmL', 'foreArmL', 'handL', 'upperArmR', 'foreArmR', 'handR', 'vest', 'backpack'];
 const COLORS = {
@@ -62,7 +62,8 @@ export class Squad {
   get count() { return this.members.length; }
 
   add(n, fromX, fromZ) {
-    for (let i = 0; i < n && this.members.length < MAX_SQUAD; i++) {
+    const cap = Math.min(MAX_SQUAD, this.cap || MAX_SQUAD);
+    for (let i = 0; i < n && this.members.length < cap; i++) {
       this.members.push({ x: fromX + (Math.random() - 0.5), z: fromZ + Math.random(), phase: Math.random() * 6.28, fireCd: Math.random() * 0.3 });
     }
   }

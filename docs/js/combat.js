@@ -30,7 +30,7 @@ export class Bullets {
     const len = Math.hypot(dirX, dirZ) || 1;
     Object.assign(b, {
       active: true, x, y, z, vx: dirX / len * w.speed, vz: dirZ / len * w.speed,
-      life: w.range / w.speed, dmg, pierce, size: w.size, hitSet: null, age: 0, lastHit: -1,
+      life: w.range / w.speed, dmg, pierce, size: w.size, hitSet: null, age: 0, lastHit: -1, ally: false, splash: 0,
     });
     this.mesh.setColorAt(b.i, _c.set(w.color).lerp(_white, 0.6));
     this.glow.setColorAt(b.i, _c.set(w.color));
