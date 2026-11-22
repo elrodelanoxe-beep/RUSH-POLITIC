@@ -35,6 +35,7 @@ export class Bullets {
     this.mesh.setColorAt(b.i, _c.set(w.color).lerp(_white, 0.6));
     this.glow.setColorAt(b.i, _c.set(w.color));
     this.mesh.instanceColor.needsUpdate = true; this.glow.instanceColor.needsUpdate = true;
+    return b;
   }
 
   clear() { for (const b of this.list) { b.active = false; this.mesh.setMatrixAt(b.i, ZERO); this.glow.setMatrixAt(b.i, ZERO); } this.mesh.instanceMatrix.needsUpdate = true; this.glow.instanceMatrix.needsUpdate = true; }

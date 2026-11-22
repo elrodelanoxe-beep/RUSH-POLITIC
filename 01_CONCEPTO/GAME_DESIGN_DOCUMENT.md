@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.1 – Concepto inicial |
+| Versión | 0.2 – Mecánica de tres carriles |
 | Estado | Diseño conceptual |
 | Tipo | Videojuego 3D de acción, supervivencia y runner |
 | Plataforma objetivo | Móviles (Android / iOS) |
@@ -90,28 +90,32 @@ El protagonista deberá permanecer suficientemente visible durante toda la parti
 
 ## 4. SISTEMA DE MOVIMIENTO DEL PROTAGONISTA
 
-**Decisión confirmada: movimiento libre lateral.**
+**Decisión confirmada (v0.2): tres carriles con movimiento lateral libre.**
 
-El protagonista avanzará automáticamente por la carretera, pero podrá desplazarse libremente hacia la izquierda y la derecha.
+El protagonista avanza automáticamente por la carretera. La calzada se divide en **tres carriles**, cada uno con una función:
 
-No se utilizará un sistema de carriles predeterminados.
+| Carril | Qué aparece | Qué hace el jugador |
+|---|---|---|
+| Izquierdo | Armas especiales | Dispararlas hasta dejar su contador a 0 para conseguirlas |
+| Central | Las hordas | Frenarlas a tiros antes de que le alcancen |
+| Derecho | Bonus +1 / +2 | Tocarlos para recogerlos |
+
+El jugador se desplaza libremente a izquierda y derecha entre los carriles. La estrategia consiste en decidir cuándo salir del carril central para conseguir armas o bonus, sabiendo que mientras tanto la horda se acerca.
 
 Características:
 
 - Avance longitudinal automático.
-- Desplazamiento lateral libre.
-- Movimiento por toda la anchura transitable de la carretera.
+- Desplazamiento lateral libre entre los tres carriles.
 - Límites físicos de desplazamiento.
-- Posibilidad de esquivar obstáculos.
-- Posibilidad de evitar ataques.
-- Recogida de potenciadores y objetos.
+- Posibilidad de esquivar enemigos.
+- Recogida de bonus tocándolos.
 - Animaciones naturales de carrera y desplazamiento lateral.
 
 ### 4.1. Controles móviles
 
-Se propone utilizar un joystick virtual o un sistema de arrastre táctil.
+Arrastre táctil: el personaje sigue al dedo a izquierda y derecha.
 
-El jugador podrá controlar el desplazamiento lateral sin necesidad de gestionar manualmente el avance.
+El jugador no controla el avance ni el disparo, solo la posición lateral.
 
 El sistema deberá ser preciso, fluido y responder correctamente a los movimientos del dedo.
 
@@ -168,23 +172,27 @@ Sus comportamientos incluirán:
 
 ## 6. SISTEMA DE COMBATE
 
-El protagonista dispondrá de armas que dispararán automáticamente contra los enemigos.
+**Decisión confirmada (v0.2): disparo continuo y recto hacia delante.**
+
+El protagonista dispara sin parar y siempre en línea recta hacia delante. No hay apuntado automático: para acertar a un enemigo o a un arma especial, el jugador tiene que colocarse delante.
+
+La munición es **infinita**.
 
 El sistema de combate tendrá que ser visualmente satisfactorio y permitir observar claramente los impactos, las eliminaciones y los efectos de las diferentes armas.
 
 Características:
 
-- Disparo automático.
-- Selección de objetivos.
-- Detección de enemigos dentro del alcance.
+- Disparo automático continuo, recto hacia delante.
+- Munición infinita.
 - Gestión de cadencia.
 - Gestión de daño.
+- Disparos múltiples en paralelo.
 - Animaciones de disparo.
 - Efectos de impacto.
 - Efectos de explosión.
 - Eliminación de enemigos.
 
-El jugador no tendrá que apuntar individualmente a cada enemigo. La parte estratégica estará principalmente en el movimiento lateral y en la selección de mejoras.
+La parte estratégica está en el movimiento entre carriles.
 
 ## 7. SISTEMA DE ARMAMENTO
 
@@ -212,6 +220,25 @@ Cada arma tendrá atributos independientes:
 - Multiplicadores de daño.
 
 El armamento deberá tener modelos 3D detallados y efectos visuales diferenciados.
+
+### 7.1. Progresión de armas en el carril izquierdo (v0.2)
+
+Las armas especiales aparecen de vez en cuando en el carril izquierdo, con un **contador**. El jugador tiene que dispararles hasta que el contador llegue a 0; en ese momento consigue el arma automáticamente. Si pasa de largo sin terminar, el arma se pierde y vuelve a aparecer más adelante.
+
+Cada arma nueva es más potente que la anterior y mejora una sola cosa: la cadencia, el daño o el número de disparos.
+
+| Nivel | Arma | Mejora | Contador |
+|---|---|---|---|
+| 0 | Pistola | Arma inicial | — |
+| 1 | Subfusil | Cadencia | 12 |
+| 2 | Escopeta | Daño | 30 |
+| 3 | Rifle de asalto | Disparos múltiples | 70 |
+| 4 | Ametralladora | Cadencia | 130 |
+| 5 | Lanzacohetes | Daño (con explosión) | 230 |
+| 6 | Arma energética | Disparos múltiples | 400 |
+| 7 | Cañón pesado | Daño | 650 |
+
+Los valores están en `docs/js/config.js` y se pueden ajustar.
 
 ## 8. SISTEMA DE BONUS Y MEJORAS
 
@@ -251,18 +278,13 @@ El jugador deberá desplazarse lateralmente para recogerlas.
 - Proyectiles especiales.
 - Ataque de gran potencia.
 
-### 8.2. Puertas de selección
+### 8.2. Bonus del carril derecho (v0.2)
 
-Se propone incorporar puertas de bonus que permitan elegir entre dos o más mejoras.
+**Sustituye a las puertas de selección de la versión 0.1.**
 
-Ejemplo:
+En el carril derecho aparecen bonus con valores como +1, +1, +2, +2, +1… El jugador los recoge tocándolos.
 
-- Puerta izquierda: x2 daño.
-- Puerta derecha: +100 municiones.
-
-El jugador tendrá que decidir cuál le interesa más en función de la situación.
-
-Esta mecánica añadirá estrategia al movimiento lateral.
+Cada punto suma **potencia de fuego**: +4 % de daño para todas las armas. Los puntos se acumulan durante toda la partida.
 
 ## 9. SISTEMA DE VIDA Y DAÑO
 
@@ -511,7 +533,7 @@ Funcionalidades iniciales:
 10. Sistema de vida de 100 puntos.
 11. Sistema de colisiones.
 12. Tres armas iniciales.
-13. Puertas de bonus.
+13. Armas especiales (carril izquierdo) y bonus +1/+2 (carril derecho). En la v0.1 eran puertas de bonus.
 14. Contador de enemigos eliminados.
 15. Una oleada final con un jefe.
 16. Pantalla de victoria y derrota.

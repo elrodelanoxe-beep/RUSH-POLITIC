@@ -4,7 +4,7 @@
 
 // Versión del juego que se muestra en el menú. Súbela con cada cambio publicado
 // (y también VERSION en sw.js) para comprobar en el móvil qué versión ha cargado.
-export const GAME_VERSION = '0.4';
+export const GAME_VERSION = '0.5';
 
 export const ROAD = {
   halfWidth: 7,        // anchura de la calzada: 14 m
@@ -28,6 +28,28 @@ export const CAMERA = {
   followX: 0.55,
   targetHFov: 50,      // grados horizontales deseados (se adapta a la pantalla)
 };
+
+// Tres carriles: izquierda armas especiales, centro hordas, derecha bonus +1/+2
+export const LANES = { left: -4.67, center: 0, right: 4.67, width: 4.67 };
+
+// Progresión de armas del carril izquierdo (orden del GDD, sección 7).
+// Cada arma nueva mejora una sola cosa respecto a la anterior: daño, cadencia o disparos.
+// counter = disparos de daño que hay que meterle a la caja para conseguirla.
+export const WEAPON_TIERS = [
+  { id: 'pistola',       name: 'PISTOLA',          damage: 1,   rate: 4,  shots: 1, counter: 0,    up: null,       color: 0xffe066, model: 'pistola',       sound: 'pistola' },
+  { id: 'subfusil',      name: 'SUBFUSIL',         damage: 1,   rate: 8,  shots: 1, counter: 12,   up: 'CADENCIA', color: 0x7cf0ff, model: 'subfusil',      sound: 'subfusil' },
+  { id: 'escopeta',      name: 'ESCOPETA',         damage: 2.5, rate: 8,  shots: 1, counter: 30,   up: 'DAÑO',     color: 0xff9f43, model: 'escopeta',      sound: 'escopeta' },
+  { id: 'rifle',         name: 'RIFLE DE ASALTO',  damage: 2.5, rate: 8,  shots: 2, counter: 70,   up: 'DISPAROS', color: 0xa3ff7c, model: 'rifle',         sound: 'subfusil' },
+  { id: 'ametralladora', name: 'AMETRALLADORA',    damage: 2.5, rate: 14, shots: 2, counter: 130,  up: 'CADENCIA', color: 0x7cf0ff, model: 'ametralladora', sound: 'subfusil' },
+  { id: 'lanzacohetes',  name: 'LANZACOHETES',     damage: 6,   rate: 14, shots: 2, counter: 230,  up: 'DAÑO',     color: 0xff7b3b, model: 'lanzacohetes',  sound: 'escopeta', splash: 1.6 },
+  { id: 'energetica',    name: 'ARMA ENERGÉTICA',  damage: 6,   rate: 14, shots: 3, counter: 400,  up: 'DISPAROS', color: 0xc77dff, model: 'energetica',    sound: 'subfusil', splash: 1.6 },
+  { id: 'canon',         name: 'CAÑÓN PESADO',     damage: 14,  rate: 14, shots: 3, counter: 650,  up: 'DAÑO',     color: 0xff4d6d, model: 'canon',         sound: 'escopeta', splash: 2.2 },
+];
+export const SHOT = { speed: 90, range: 60, spacing: 0.38 };
+
+// Bonus del carril derecho: se tocan para cogerlos. Cada punto = +4 % de daño.
+export const BONUS = { sequence: [1, 1, 2, 2, 1, 3, 1, 2, 2, 3], perPoint: 0.04, every: [42, 60] };
+export const CRATE = { every: [115, 140], firstAt: 55 };
 
 // Tres armas iniciales (GDD sección 17, punto 12)
 export const WEAPONS = {
@@ -56,12 +78,13 @@ export const ENEMY_TYPES = {
 };
 
 // Oleadas del nivel 1, Ocean Bridge (GDD secciones 14 y 17)
+// hpMul: la horda se hace más resistente en cada oleada, al ritmo de las armas
 export const WAVES = [
-  { duration: 18, rate: 2.6, mix: { normal: 0.8, corredor: 0.2 }, groups: 0.15 },
-  { duration: 20, rate: 4.0, mix: { normal: 0.6, corredor: 0.25, grande: 0.15 }, groups: 0.25 },
-  { duration: 22, rate: 5.5, mix: { normal: 0.45, corredor: 0.2, grande: 0.12, agil: 0.13, blindado: 0.1 }, groups: 0.3, leaders: 1 },
-  { duration: 22, rate: 7.0, mix: { normal: 0.4, corredor: 0.2, grande: 0.12, agil: 0.14, blindado: 0.14 }, groups: 0.4, leaders: 2 },
-  { duration: 24, rate: 8.5, mix: { normal: 0.35, corredor: 0.22, grande: 0.14, agil: 0.14, blindado: 0.15 }, groups: 0.45, leaders: 3 },
+  { duration: 22, rate: 1.6, hpMul: 1,   mix: { normal: 0.8, corredor: 0.2 }, groups: 0.15 },
+  { duration: 24, rate: 2.4, hpMul: 1.8, mix: { normal: 0.6, corredor: 0.25, grande: 0.15 }, groups: 0.25 },
+  { duration: 26, rate: 3.2, hpMul: 3.2, mix: { normal: 0.45, corredor: 0.2, grande: 0.12, agil: 0.13, blindado: 0.1 }, groups: 0.3, leaders: 1 },
+  { duration: 26, rate: 4.0, hpMul: 5.5, mix: { normal: 0.4, corredor: 0.2, grande: 0.12, agil: 0.14, blindado: 0.14 }, groups: 0.35, leaders: 2 },
+  { duration: 28, rate: 4.8, hpMul: 9,   mix: { normal: 0.35, corredor: 0.22, grande: 0.14, agil: 0.14, blindado: 0.15 }, groups: 0.4, leaders: 2 },
 ];
 export const BREAK_DURATION = 6;
 export const SPAWN_DISTANCE = 125;

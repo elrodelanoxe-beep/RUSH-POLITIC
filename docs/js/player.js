@@ -27,7 +27,7 @@ export const FLASH_TEX = () => radialTexture([[0, 'rgba(255,255,240,1)'], [0.25,
 export const GLOW_TEX = () => radialTexture([[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']], 64);
 
 // Modelos de armas detallados (cañón hacia +Z)
-function gunGeometry(id) {
+export function gunGeometry(id) {
   const metal = 0x2b2f36, dark = 0x16181c, wood = 0x7a4b28, accent = 0x4a5565;
   const parts = [];
   const add = (g, c) => parts.push(tint(g, c));
@@ -44,6 +44,40 @@ function gunGeometry(id) {
     add(T(R(box(0.045, 0.11, 0.05), -0.25, 0, 0), 0, -0.05, -0.02), dark);           // empuñadura
     add(T(box(0.035, 0.04, 0.2), 0, 0.02, -0.17), accent);                            // culata
     add(T(box(0.03, 0.04, 0.08), 0, 0.1, 0.06), dark);                                // mira
+  } else if (id === 'rifle') {
+    add(T(box(0.06, 0.1, 0.5), 0, 0.03, 0.12), metal);
+    add(T(R(cyl(0.015, 0.015, 0.3, 8), Math.PI / 2, 0, 0), 0, 0.045, 0.5), dark);
+    add(T(R(box(0.045, 0.2, 0.07), 0.3, 0, 0), 0, -0.1, 0.18), dark);
+    add(T(R(box(0.045, 0.11, 0.05), -0.25, 0, 0), 0, -0.05, -0.04), dark);
+    add(T(box(0.05, 0.09, 0.26), 0, 0.0, -0.24), 0x5b4a3a);
+    add(T(box(0.04, 0.05, 0.16), 0, 0.11, 0.1), 0x111111);
+    add(T(R(cyl(0.025, 0.025, 0.1, 8), Math.PI / 2, 0, 0), 0, 0.12, 0.1), 0x3a7bd5);
+  } else if (id === 'ametralladora') {
+    add(T(box(0.1, 0.13, 0.5), 0, 0.03, 0.1), metal);
+    add(T(R(cyl(0.035, 0.035, 0.5, 10), Math.PI / 2, 0, 0), 0, 0.04, 0.55), accent);
+    for (const a of [0, 2.1, 4.2]) add(T(R(cyl(0.012, 0.012, 0.56, 6), Math.PI / 2, 0, 0), Math.cos(a) * 0.022, 0.04 + Math.sin(a) * 0.022, 0.58), dark);
+    add(T(R(cyl(0.09, 0.09, 0.08, 12), 0, 0, Math.PI / 2), -0.1, -0.03, 0.12), 0x6b5a2a);   // tambor
+    add(T(R(box(0.05, 0.12, 0.06), -0.25, 0, 0), 0, -0.07, -0.05), dark);
+    add(T(box(0.12, 0.03, 0.08), 0, 0.12, 0.25), dark);
+  } else if (id === 'lanzacohetes') {
+    add(T(R(cyl(0.07, 0.07, 0.9, 12), Math.PI / 2, 0, 0), 0, 0.08, 0.2), 0x4f5d3a);
+    add(T(R(cyl(0.085, 0.085, 0.08, 12), Math.PI / 2, 0, 0), 0, 0.08, 0.66), 0x2b2f36);
+    add(T(R(cyl(0.085, 0.07, 0.08, 12), Math.PI / 2, 0, 0), 0, 0.08, -0.26), 0x2b2f36);
+    add(T(box(0.04, 0.12, 0.05), 0, -0.04, 0.1), dark);
+    add(T(box(0.05, 0.06, 0.12), -0.08, 0.15, 0.2), 0x111111);
+    add(T(R(cyl(0.05, 0.02, 0.12, 8), Math.PI / 2, 0, 0), 0, 0.08, 0.72), 0xd94f3d);
+  } else if (id === 'energetica') {
+    add(T(box(0.09, 0.12, 0.42), 0, 0.03, 0.1), 0xe8e8f0);
+    add(T(R(cyl(0.03, 0.045, 0.3, 10), Math.PI / 2, 0, 0), 0, 0.04, 0.44), 0x8a5cff);
+    for (const z of [0.36, 0.44, 0.52]) add(T(R(new THREE.TorusGeometry(0.05, 0.01, 6, 14), 0, 0, 0), 0, 0.04, z), 0xc77dff);
+    add(T(box(0.1, 0.03, 0.3), 0, 0.1, 0.05), 0x5ff3ff);
+    add(T(R(box(0.045, 0.12, 0.05), -0.25, 0, 0), 0, -0.06, -0.04), dark);
+  } else if (id === 'canon') {
+    add(T(R(cyl(0.11, 0.13, 0.85, 14), Math.PI / 2, 0, 0), 0, 0.07, 0.3), 0x3d4450);
+    add(T(R(cyl(0.14, 0.14, 0.1, 14), Math.PI / 2, 0, 0), 0, 0.07, 0.75), 0x1f2329);
+    add(T(R(cyl(0.12, 0.12, 0.06, 14), Math.PI / 2, 0, 0), 0, 0.07, 0.1), 0xffb400);
+    add(T(box(0.24, 0.22, 0.3), 0, 0.02, -0.12), 0x2b2f36);
+    add(T(R(box(0.05, 0.13, 0.06), -0.2, 0, 0), 0, -0.12, -0.05), dark);
   } else {
     add(T(R(cyl(0.022, 0.022, 0.62, 8), Math.PI / 2, 0, 0), 0, 0.05, 0.3), dark);
     add(T(R(cyl(0.018, 0.018, 0.5, 8), Math.PI / 2, 0, 0), 0, 0.01, 0.27), metal);
@@ -53,7 +87,7 @@ function gunGeometry(id) {
   }
   return mergeGeos(parts);
 }
-const GUN_TIP = { pistola: 0.26, subfusil: 0.44, escopeta: 0.62 };
+export const GUN_TIP = { pistola: 0.26, subfusil: 0.44, escopeta: 0.62, rifle: 0.66, ametralladora: 0.86, lanzacohetes: 0.78, energetica: 0.6, canon: 0.82 };
 
 // Protagonista detallado sobre el mismo esqueleto que la horda
 export class PlayerModel {
@@ -107,7 +141,7 @@ export class PlayerModel {
     this.gunHolder.rotation.x = Math.PI / 2;
     this.joints.wristR.add(this.gunHolder);
     this.guns = {};
-    for (const id of ['pistola', 'subfusil', 'escopeta']) { const m = new THREE.Mesh(gunGeometry(id), vcm); m.visible = false; this.gunHolder.add(m); this.guns[id] = m; }
+    for (const id of Object.keys(GUN_TIP)) { const m = new THREE.Mesh(gunGeometry(id), vcm); m.visible = false; this.gunHolder.add(m); this.guns[id] = m; }
     this.flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: FLASH_TEX(), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
     this.flash.visible = false;
     this.gunHolder.add(this.flash);
@@ -130,10 +164,10 @@ export class PlayerModel {
 
   muzzle() {
     this.flashT = 0.055;
-    const big = this.weapon === 'escopeta' ? 1.9 : this.weapon === 'subfusil' ? 1.1 : 1.2;
+    const big = { escopeta: 1.9, lanzacohetes: 2, canon: 2.4, ametralladora: 1.4, energetica: 1.5 }[this.weapon] || 1.2;
     this.flash.scale.setScalar(big * (0.3 + Math.random() * 0.14));
     this.flash.material.rotation = Math.random() * Math.PI;
-    this.kick = this.weapon === 'escopeta' ? 1 : 0.4;
+    this.kick = ['escopeta', 'lanzacohetes', 'canon'].includes(this.weapon) ? 1 : 0.4;
   }
   hurt() { this.hurtT = 0.25; }
 

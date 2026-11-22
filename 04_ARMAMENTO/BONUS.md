@@ -40,18 +40,13 @@ El jugador deberá desplazarse lateralmente para recogerlas.
 - Proyectiles especiales.
 - Ataque de gran potencia.
 
-### 8.2. Puertas de selección
+### 8.2. Bonus del carril derecho (v0.2)
 
-Se propone incorporar puertas de bonus que permitan elegir entre dos o más mejoras.
+**Sustituye a las puertas de selección de la versión 0.1.**
 
-Ejemplo:
+En el carril derecho aparecen bonus con valores como +1, +1, +2, +2, +1… El jugador los recoge tocándolos.
 
-- Puerta izquierda: x2 daño.
-- Puerta derecha: +100 municiones.
-
-El jugador tendrá que decidir cuál le interesa más en función de la situación.
-
-Esta mecánica añadirá estrategia al movimiento lateral.
+Cada punto suma **potencia de fuego**: +4 % de daño para todas las armas. Los puntos se acumulan durante toda la partida.
 
 ## Duración y apilamiento
 
