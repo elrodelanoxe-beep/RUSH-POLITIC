@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { canvasTexture } from './geom.js';
+import { JOINTS, bodyGeometries, mergeGeos, makePose, runPose, T, S, R, sph, box, cyl, tint } from './rig.js';
 import { BOSS, ROAD } from './config.js';
 
 const lam = c => new THREE.MeshLambertMaterial({ color: c });
@@ -11,34 +12,55 @@ export class Boss {
     const root = this.root = new THREE.Group();
     const body = this.body = new THREE.Group();
     root.add(body);
-    const suit = lam(0x3d4450), shirt = lam(0xf5f5f5), tie = lam(0xd7263d), skin = lam(0xe9b48f), shoe = lam(0x111111), hairM = lam(0x9aa0a6);
-    const box = (w, h, d, mat, x, y, z, parent = body) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; };
-    const pivot = (x, y, z, parent = body) => { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); return g; };
-    this.legL = pivot(-0.22, 0.95, 0); this.legR = pivot(0.22, 0.95, 0);
-    for (const l of [this.legL, this.legR]) { box(0.34, 0.95, 0.36, suit, 0, -0.47, 0, l); box(0.38, 0.16, 0.5, shoe, 0, -0.92, 0.06, l); }
-    box(0.95, 0.95, 0.55, suit, 0, 1.45, 0);          // chaqueta
-    box(0.95, 0.4, 0.5, suit, 0, 1.0, 0.02);           // barriga
-    box(0.3, 0.6, 0.02, shirt, 0, 1.6, 0.28);
-    box(0.12, 0.55, 0.03, tie, 0, 1.55, 0.3);
-    this.head = pivot(0, 2.0, 0);
-    box(0.56, 0.6, 0.52, skin, 0, 0.3, 0, this.head);
-    box(0.6, 0.16, 0.56, hairM, 0, 0.62, -0.02, this.head);
-    box(0.4, 0.12, 0.1, skin, 0, 0.05, 0.28, this.head);              // mentón
-    box(0.16, 0.05, 0.03, lam(0x222222), -0.13, 0.42, 0.27, this.head); // cejas enfadadas
-    box(0.16, 0.05, 0.03, lam(0x222222), 0.13, 0.42, 0.27, this.head);
-    this.head.children[3].rotation.z = -0.35; this.head.children[4].rotation.z = 0.35;
-    this.mouth = box(0.22, 0.1, 0.03, lam(0x5a1010), 0, 0.17, 0.27, this.head);
-    // brazo con megáfono
-    this.armL = pivot(-0.6, 1.85, 0);
-    box(0.26, 0.8, 0.28, suit, 0, -0.4, 0, this.armL);
-    const mega = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.12, 0.8, 10, 1, true), new THREE.MeshLambertMaterial({ color: 0xf5f5f5, side: THREE.DoubleSide }));
-    mega.position.set(0, -0.85, 0.3); mega.rotation.x = Math.PI / 2 - 0.2;
-    this.armL.add(mega);
-    const megaRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 6, 16), lam(0xd7263d)); megaRing.position.set(0, -0.78, 0.7); this.armL.add(megaRing);
-    // brazo con bandera roja ficticia
-    this.armR = pivot(0.6, 1.85, 0);
-    box(0.26, 0.8, 0.28, suit, 0, -0.4, 0, this.armR);
-    box(0.08, 3.6, 0.08, lam(0x8a6d3b), 0, 0.8, 0.1, this.armR);
+    const G = bodyGeometries();
+    const suit = lam(0x4a5468), suitDark = lam(0x343c4a), skin = lam(0xe9b48f), shoe = lam(0x121212);
+    const vc = new THREE.MeshLambertMaterial({ vertexColors: true });
+    this.joints = {};
+    for (const [name, parent, off] of JOINTS) {
+      const j = new THREE.Group(); j.position.set(...off); j.rotation.order = 'YXZ';
+      (parent ? this.joints[parent] : body).add(j); this.joints[name] = j;
+    }
+    const at = (joint, geo, mat) => { const m = new THREE.Mesh(geo, mat); this.joints[joint].add(m); return m; };
+    at('pelvis', G.pelvis, suitDark); at('spine', G.torso, suit); at('head', G.head, skin);
+    for (const sd of ['L', 'R']) {
+      at('hip' + sd, G.thigh, suitDark); at('knee' + sd, G.shin, suitDark); at('ankle' + sd, G.shoe, shoe);
+      at('shoulder' + sd, G.upperArm, suit); at('elbow' + sd, G.foreArm, suit); at('wrist' + sd, G.hand, skin);
+    }
+    // traje: barriga, solapas, camisa, corbata roja e insignia ficticia
+    at('spine', mergeGeos([
+      tint(S(T(sph(0.2, 14, 10), 0, 0.12, 0.05), 1.15, 1, 1), 0x3a4150),
+      tint(T(R(box(0.1, 0.36, 0.02), 0, 0, 0.25), -0.07, 0.3, 0.155), 0xf5f5f5),
+      tint(T(R(box(0.1, 0.36, 0.02), 0, 0, -0.25), 0.07, 0.3, 0.155), 0xf5f5f5),
+      tint(T(R(box(0.06, 0.34, 0.025), 0.12, 0, 0), 0, 0.25, 0.2), 0xd7263d),
+      tint(T(box(0.05, 0.05, 0.03), 0, 0.43, 0.16), 0xb81f33),
+      tint(T(R(box(0.08, 0.3, 0.025), 0, 0, -0.35), -0.12, 0.32, 0.165), 0x2a303b),
+      tint(T(R(box(0.08, 0.3, 0.025), 0, 0, 0.35), 0.12, 0.32, 0.165), 0x2a303b),
+      tint(T(cyl(0.03, 0.03, 0.01, 10).rotateX(Math.PI / 2), -0.12, 0.42, 0.18), 0xffd32a),
+      tint(T(box(0.07, 0.025, 0.02), 0.13, 0.2, 0.2), 0xf5f5f5),
+    ]), vc);
+    // cara: canas a los lados, cejas enfadadas, gafas
+    at('head', mergeGeos([
+      tint(S(T(new THREE.SphereGeometry(0.118, 14, 8, Math.PI * 0.6, Math.PI * 1.8, Math.PI * 0.32, Math.PI * 0.28), 0, 0.12, -0.005), 1.04, 1.1, 1.1), 0xbfc3c8),
+      tint(T(R(box(0.07, 0.016, 0.02), 0, 0, -0.35), -0.045, 0.175, 0.112), 0x333333),
+      tint(T(R(box(0.07, 0.016, 0.02), 0, 0, 0.35), 0.045, 0.175, 0.112), 0x333333),
+      tint(T(R(cyl(0.028, 0.028, 0.008, 12), Math.PI / 2, 0, 0), -0.045, 0.145, 0.118), 0x222222),
+      tint(T(R(cyl(0.028, 0.028, 0.008, 12), Math.PI / 2, 0, 0), 0.045, 0.145, 0.118), 0x222222),
+      tint(T(box(0.03, 0.006, 0.006), 0, 0.147, 0.122), 0x222222),
+    ]), vc);
+    this.mouth = at('head', T(S(sph(0.03, 10, 6), 1.5, 0.6, 0.5), 0, 0.065, 0.112), lam(0x4a0d0d));
+    // megáfono delante de la boca
+    const mega = new THREE.Group();
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.03, 0.22, 14, 1, true), new THREE.MeshLambertMaterial({ color: 0xf5f5f5, side: THREE.DoubleSide }));
+    cone.rotation.x = Math.PI / 2; cone.position.z = 0.11; mega.add(cone);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.012, 6, 18), lam(0xd7263d)); ring.position.z = 0.22; mega.add(ring);
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.07, 0.03), lam(0x222222)); grip.position.set(0, -0.05, 0.05); mega.add(grip);
+    mega.position.set(0, 0.07, 0.12);
+    this.joints.head.add(mega);
+    // mástil y bandera roja ficticia
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.6, 8), lam(0x8a6d3b));
+    const poleG = new THREE.Group(); poleG.position.set(0.33, 0.1, 0.12); poleG.add(pole); pole.position.y = 0.6;
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), lam(0xffd32a)); knob.position.y = 1.42; poleG.add(knob);
+    this.joints.spine.add(poleG);
     const flagTex = canvasTexture(512, 320, (ctx, w, h) => {
       ctx.fillStyle = '#d7263d'; ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = '#ffd32a'; ctx.beginPath(); ctx.arc(110, 110, 70, 0, Math.PI * 2); ctx.fill();
@@ -48,15 +70,16 @@ export class Boss {
       ctx.font = '700 34px system-ui, sans-serif';
       ctx.fillText('SINDICATO FICTICIO', w / 2, 225); ctx.fillText('DEL GRITO', w / 2, 270);
     });
-    this.flagGeo = new THREE.PlaneGeometry(2.4, 1.5, 16, 4);
+    this.flagGeo = new THREE.PlaneGeometry(0.72, 0.45, 16, 4);
     this.flagBase = Float32Array.from(this.flagGeo.attributes.position.array);
     const flag = new THREE.Mesh(this.flagGeo, new THREE.MeshLambertMaterial({ map: flagTex, side: THREE.DoubleSide }));
-    flag.position.set(1.22, 1.85, 0.1);
-    this.armR.add(flag);
+    flag.position.set(0.37, 1.15, 0);
+    poleG.add(flag);
+    this.pose = makePose();
     root.scale.setScalar(4.6);
-    const sh = new THREE.Mesh(new THREE.CircleGeometry(1.1, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.3, depthWrite: false }));
+    const sh = new THREE.Mesh(new THREE.CircleGeometry(0.6, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.3, depthWrite: false }));
     sh.position.y = 0.01; root.add(sh);
-    this.mats = [suit];
+    this.mats = [suit, suitDark];
     root.visible = false;
     scene.add(root);
 
@@ -141,16 +164,18 @@ export class Boss {
     this._px = px; this._pz = pz;
     this.z = pz - this.offset;
     // animación
-    const b = this.body;
     if (this.state !== 'dying') {
-      const s = Math.sin(this.t * 6);
-      this.legL.rotation.x = s * 0.4; this.legR.rotation.x = -s * 0.4;
-      b.position.y = Math.abs(Math.cos(this.t * 6)) * 0.05;
-      this.armL.rotation.x = -1.3 + Math.sin(this.t * 3) * 0.15;
-      this.armR.rotation.x = -0.25 + Math.sin(this.t * 2) * 0.1;
       const shouting = this.attackT < 0.6 || this.attackT > (phase2 ? 1.6 : 2.4);
-      this.mouth.scale.y = shouting ? 3 : 1;
-      this.head.rotation.x = shouting ? -0.15 : 0;
+      runPose(this.pose, this.t * 5, 0.55);
+      const r = this.pose.r, J = this.joints;
+      JOINTS.forEach(([name], i) => J[name].rotation.set(r[i * 3], r[i * 3 + 1], r[i * 3 + 2]));
+      J.pelvis.position.y = 0.95 + this.pose.bob;
+      // brazo izquierdo sujeta el megáfono, el derecho el mástil
+      J.shoulderL.rotation.set(-1.55, 0.75, -0.2); J.elbowL.rotation.set(-1.5, 0, 0);
+      J.shoulderR.rotation.set(-0.5, -0.2, 0.25); J.elbowR.rotation.set(-1.1, 0, 0);
+      J.head.rotation.x = shouting ? -0.22 : 0.05;
+      J.spine.rotation.x = shouting ? -0.12 : 0.05;
+      this.mouth.scale.set(1, shouting ? 3.2 : 1, 1);
     } else {
       this.root.rotation.x = Math.min(1.5, this.t * 1.2);
       this.root.position.y = -Math.max(0, this.t - 1) * 2;
@@ -161,7 +186,7 @@ export class Boss {
     const pos = this.flagGeo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const x = this.flagBase[i * 3];
-      pos.array[i * 3 + 2] = Math.sin(x * 2.4 - this.t * 6) * 0.12 * (x + 1.2);
+      pos.array[i * 3 + 2] = Math.sin(x * 8 - this.t * 6) * 0.04 * (x + 0.36);
     }
     pos.needsUpdate = true;
     this.flashT -= dt;
