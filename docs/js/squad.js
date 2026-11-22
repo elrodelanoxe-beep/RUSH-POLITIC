@@ -17,12 +17,16 @@ const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vect
 
 // Posición de cada soldado respecto al protagonista (detrás y a los lados)
 // la formación se ensancha a medida que crece el ejército
+// (v0.9) cuanto más grande es el ejército, más ancho: hasta 16 columnas (casi toda la calzada)
+export function cols(n) { return Math.max(4, Math.min(16, Math.ceil(Math.sqrt(n * 1.6)))); }
 export function slot(k, n = 0) {
   if (k < 2) return [k === 0 ? -0.85 : 0.85, 0.15];
-  const cols = n <= 22 ? 4 : n <= 60 ? 6 : 9;
-  const r = Math.floor((k - 2) / cols) + 1, c = (k - 2) % cols;
-  return [(c - (cols - 1) / 2) * 0.8 + (r % 2 ? 0.2 : -0.2), r * (cols > 4 ? 0.75 : 0.85)];
+  const c0 = cols(n);
+  const r = Math.floor((k - 2) / c0) + 1, c = (k - 2) % c0;
+  return [(c - (c0 - 1) / 2) * 0.8 + (r % 2 ? 0.2 : -0.2), r * 0.8];
 }
+// ancho total de la formación
+export function formationHalfWidth(n) { return n <= 2 ? 0.85 : Math.max(0.85, ((cols(n) - 1) / 2) * 0.8 + 0.2); }
 
 // Escuadrón de soldados que corren y disparan con el protagonista
 export class Squad {
@@ -91,10 +95,13 @@ export class Squad {
     const lim = ROAD.halfWidth - 0.4;
     const gun = this._gun(this.model);
     const n = this.members.length;
+    // la formación se desplaza para no salirse de la calzada (el protagonista puede quedar en un lateral)
+    const hw = formationHalfWidth(n), cx = Math.max(-lim + hw, Math.min(lim - hw, px));
+    this.cx = hw >= lim ? 0 : cx;
     for (let k = 0; k < n; k++) {
       const m = this.members[k];
-      const [ox, oz] = slot(k, this.members.length);
-      const tx = Math.max(-lim, Math.min(lim, px + ox)), tz = pz + oz;
+      const [ox, oz] = slot(k, n);
+      const tx = Math.max(-lim, Math.min(lim, this.cx + ox)), tz = pz + oz;
       const f = Math.min(1, dt * 8);
       m.x += (tx - m.x) * f; m.z += (tz - m.z) * f;
       m.phase += dt * 11.5;
