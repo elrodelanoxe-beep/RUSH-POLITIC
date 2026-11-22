@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { LANES } from './config.js';
 import { gunGeometry } from './player.js';
 
-const UP_COLOR = { CADENCIA: '#1ea7ff', DAÑO: '#ff7a1a', DISPAROS: '#a64dff' };
+// Las armas especiales van en amarillo para distinguirlas de los paneles de soldados
+const WEAPON_COLOR = '#ffc400';
+const BONUS_COLOR = { plus: '#1e88ff', minus: '#e53935', heal: '#22b24c' };
 
 function glassPanel(ctx, w, h, col) {
   ctx.clearRect(0, 0, w, h);
@@ -60,7 +62,7 @@ export class WeaponCrates {
 
   _draw(c) {
     const ctx = c.canvas.getContext('2d'), w = c.canvas.width, h = c.canvas.height;
-    glassPanel(ctx, w, h, UP_COLOR[c.tier.up] || '#888888');
+    glassPanel(ctx, w, h, WEAPON_COLOR);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = '800 40px system-ui, sans-serif'; ctx.fillStyle = '#fff';
     ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(10,20,40,0.85)';
@@ -77,11 +79,11 @@ export class WeaponCrates {
     Object.assign(c, { active: true, z, x: LANES.left, tierIndex, tier, hp: tier.counter, shown: -1, done: false, pop: 0 });
     c.g.position.set(c.x, 0, z); c.g.visible = true; c.g.scale.setScalar(1);
     c.mat.opacity = 1;
-    for (const p of c.posts) { const col = UP_COLOR[tier.up]; p.userData.mat.color.set(col); p.userData.mat.emissive.set(col).multiplyScalar(0.25); }
+    for (const p of c.posts) { p.userData.mat.color.set(WEAPON_COLOR); p.userData.mat.emissive.set(WEAPON_COLOR).multiplyScalar(0.25); }
     for (const m of Object.values(c.guns)) m.visible = false;
     if (!c.guns[tier.model]) { const m = new THREE.Mesh(gunGeometry(tier.model), new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x555555 })); m.scale.setScalar(4); c.gunHolder.add(m); c.guns[tier.model] = m; }
     c.guns[tier.model].visible = true;
-    c.ring.material.color.set(UP_COLOR[tier.up]);
+    c.ring.material.color.set(WEAPON_COLOR);
     this._draw(c);
     return c;
   }
@@ -130,23 +132,32 @@ export class BonusTokens {
       pl.scale.y = pr.scale.y = 0.75;
       pl.position.x = -pw / 2 - 0.1; pr.position.x = pw / 2 + 0.1; g.add(pl, pr);
       g.visible = false; scene.add(g);
-      this.pool.push({ g, canvas, tex, mat, panel, active: false });
+      this.pool.push({ g, canvas, tex, mat, panel, posts: [pl, pr], active: false });
     }
   }
-  spawn(z, value) {
+  // kind: 'plus' (soldados), 'minus' (empieza en negativo), 'heal' (vida)
+  spawn(z, value, kind = 'plus', max = 9) {
     const b = this.pool.find(p => !p.active); if (!b) return null;
-    Object.assign(b, { active: true, z, x: LANES.right, value, acc: 0, used: false, fade: 0, pop: 0 });
+    Object.assign(b, { active: true, z, x: LANES.right, value, kind, max, used: false, fade: 0, pop: 0, shownCol: '' });
     this._draw(b);
     b.g.position.set(b.x, 0, z); b.g.visible = true; b.panel.scale.setScalar(1); b.mat.opacity = 1;
     return b;
   }
   _draw(b) {
     const ctx = b.canvas.getContext('2d');
-    glassPanel(ctx, b.canvas.width, b.canvas.height, '#1e88ff');
-    bigText(ctx, '+' + b.value, b.canvas.width / 2, b.canvas.height / 2 + 4, 130, b.canvas.width - 40);
+    const col = b.kind === 'heal' ? BONUS_COLOR.heal : b.value < 0 ? BONUS_COLOR.minus : BONUS_COLOR.plus;
+    glassPanel(ctx, b.canvas.width, b.canvas.height, col);
+    const num = (b.value > 0 ? '+' : b.value < 0 ? '−' : '') + Math.abs(b.value);
+    const label = b.kind === 'heal' ? num + ' ❤' : num;
+    bigText(ctx, label, b.canvas.width / 2, b.canvas.height / 2 + 4, 130, b.canvas.width - 40);
+    if (b.value >= b.max) {
+      ctx.font = '800 26px system-ui, sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      ctx.fillText('MÁX', b.canvas.width / 2, b.canvas.height - 22);
+    }
     b.tex.needsUpdate = true;
+    if (b.shownCol !== col) { b.shownCol = col; for (const p of b.posts) { p.userData.mat.color.set(col); p.userData.mat.emissive.set(col).multiplyScalar(0.25); } }
   }
-  // al dispararle, el número sube (+1 cada 'step' de daño)
+  // al dispararle, el número sube 1 por impacto
   hitTest(x, z0, z1) {
     for (const b of this.pool) {
       if (!b.active || b.used) continue;
@@ -154,16 +165,13 @@ export class BonusTokens {
     }
     return null;
   }
-  addDamage(b, dmg, step, max) {
-    const BONUS_GROWTH = 0.6;
-    if (b.value >= max) return false;
-    b.acc += dmg; b.pop = 1;
-    let changed = false;
-    // cada punto cuesta más que el anterior (proporcional)
-    let cost = step * (1 + b.value * BONUS_GROWTH);
-    while (b.acc >= cost && b.value < max) { b.acc -= cost; b.value++; changed = true; cost = step * (1 + b.value * BONUS_GROWTH); }
-    if (changed) this._draw(b);
-    return changed;
+  // cada impacto suma 1 y el panel se redibuja al momento
+  hit(b, n = 1) {
+    b.pop = 1;
+    if (b.value >= b.max) return false;
+    b.value = Math.min(b.max, b.value + n);
+    this._draw(b);
+    return true;
   }
   clear() { for (const b of this.pool) { b.active = false; b.g.visible = false; } }
   update(dt, px, pz, onTake) {

@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.3 – Soldados aliados y jefe final |
+| Versión | 0.4 – Paneles de tipos y tres dificultades |
 | Estado | Diseño conceptual |
 | Tipo | Videojuego 3D de acción, supervivencia y runner |
 | Plataforma objetivo | Móviles (Android / iOS) |
@@ -284,9 +284,23 @@ El jugador deberá desplazarse lateralmente para recogerlas.
 
 En el carril derecho aparecen paneles de bonus con valores como +1, +1, +2, +2, +1… (v0.3 del GDD):
 
-- **Disparar al panel hace que su número SUBA** (al revés que las armas del carril izquierdo, que bajan). Cada punto cuesta un poco más que el anterior y el máximo es +8, así que conviene empezar a disparar desde lejos.
-- **Al atravesar el panel se suman tantos soldados como indique** (+N = N soldados). Corren en formación junto al protagonista, llevan la misma arma y disparan recto hacia delante. Máximo 30 soldados.
-- **Proporcionalidad:** cuantos más soldados lleva el jugador, más caro es subir los paneles y más resistentes son las hordas, para que el ejército no rompa el equilibrio.
+- **Cada impacto de tus disparos suma 1 al número del panel** y se ve al instante (las balas de los soldados lo atraviesan; cada soldado dispara al 60 % del daño de tu arma) (al revés que las armas del carril izquierdo, que bajan). Cada panel tiene un máximo según la dificultad.
+- **Tipos de panel (v0.4 del GDD):**
+  - **Azul (+N):** al atravesarlo se suman N **soldados**. Corren en formación junto al protagonista, llevan la misma arma y disparan recto hacia delante.
+  - **Rojo (−N):** empieza en negativo y hay que dispararle mucho para llevarlo a positivo (cuanto más grande es tu ejército, más negativo aparece). Si lo tocas mientras sigue en negativo, **pierdes N soldados** (o vida si no te quedan). Al pasar a positivo se vuelve azul.
+  - **Verde (+N ❤):** recupera N puntos de vida.
+- **Proporcionalidad:** cuantos más soldados lleva el jugador, más resistentes son las hordas y más negativos los paneles rojos, para que el ejército no rompa el equilibrio.
+- Las **armas especiales** del carril izquierdo son **amarillas** para distinguirlas de los paneles de soldados.
+
+### 8.3. Niveles de dificultad (v0.4 del GDD)
+
+Se eligen en el menú principal:
+
+| Nivel | Vida | Máx. soldados | Panel máx. | Paneles rojos | Hordas | Jefe |
+|---|---|---|---|---|---|---|
+| Fácil | 150 | 40 | +12 | 20 % (−3 a −6) | 70 % | 70 % |
+| Normal | 100 | 30 | +9 | 35 % (−6 a −12) | 100 % | 100 % |
+| Difícil | 70 | 24 | +7 | 50 % (−10 a −18) | 135 %, +20 % de aparición | 115 % |
 
 ## 9. SISTEMA DE VIDA Y DAÑO
 
