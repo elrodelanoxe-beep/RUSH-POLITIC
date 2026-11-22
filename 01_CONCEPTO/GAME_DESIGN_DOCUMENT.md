@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.4 – Paneles de tipos y tres dificultades |
+| Versión | 0.5 – Paneles sin límite, minijefes y jefe cuerpo a cuerpo |
 | Estado | Diseño conceptual |
 | Tipo | Videojuego 3D de acción, supervivencia y runner |
 | Plataforma objetivo | Móviles (Android / iOS) |
@@ -138,6 +138,7 @@ Características visuales:
 - Diferentes peinados.
 - Diferentes complexiones físicas.
 - Diferentes alturas.
+- Cara con ojos, cejas y boca; barbas; caras tapadas con braga o pañuelo; gorros de lana; bufandas; camisetas estampadas; cinturones; suelas de zapatilla; algunos con megáfono (v0.5 del GDD).
 - Diversidad de modelos y vestimentas.
 
 Se deberá evitar que todos los enemigos tengan exactamente la misma apariencia.
@@ -284,23 +285,24 @@ El jugador deberá desplazarse lateralmente para recogerlas.
 
 En el carril derecho aparecen paneles de bonus con valores como +1, +1, +2, +2, +1… (v0.3 del GDD):
 
-- **Cada impacto de tus disparos suma 1 al número del panel** y se ve al instante (las balas de los soldados lo atraviesan; cada soldado dispara al 60 % del daño de tu arma) (al revés que las armas del carril izquierdo, que bajan). Cada panel tiene un máximo según la dificultad.
-- **Tipos de panel (v0.4 del GDD):**
-  - **Azul (+N):** al atravesarlo se suman N **soldados**. Corren en formación junto al protagonista, llevan la misma arma y disparan recto hacia delante.
+- **Cada impacto de tus disparos suma 1 al número del panel** y se ve al instante (al revés que las armas del carril izquierdo, que bajan). **No hay máximo:** si el ejército llena la pantalla, se llena. Las balas de los soldados atraviesan los paneles.
+- **Valores iniciales (v0.5 del GDD):** los paneles azules y verdes siempre empiezan en **+1**; los rojos empiezan en negativo (de −4 a −20 en Normal). Nunca aparece un +2 o más de inicio: el número solo crece disparando.
+- **Tipos de panel:**
+  - **Azul (+N):** al atravesarlo se suman N **soldados**. Corren en formación junto al protagonista (la formación se ensancha cuanto más grande es), llevan la misma arma y disparan recto hacia delante con **menos alcance** que el protagonista.
   - **Rojo (−N):** empieza en negativo y hay que dispararle mucho para llevarlo a positivo (cuanto más grande es tu ejército, más negativo aparece). Si lo tocas mientras sigue en negativo, **pierdes N soldados** (o vida si no te quedan). Al pasar a positivo se vuelve azul.
   - **Verde (+N ❤):** recupera N puntos de vida.
-- **Proporcionalidad:** cuantos más soldados lleva el jugador, más resistentes son las hordas y más negativos los paneles rojos, para que el ejército no rompa el equilibrio.
+- **Proporcionalidad:** cuantos más soldados lleva el jugador, más resistentes y numerosas son las hordas y más negativos los paneles rojos. Por encima de 50 soldados, la potencia de fuego del ejército crece más despacio (raíz cuadrada).
 - Las **armas especiales** del carril izquierdo son **amarillas** para distinguirlas de los paneles de soldados.
 
-### 8.3. Niveles de dificultad (v0.4 del GDD)
+### 8.3. Niveles de dificultad (v0.5 del GDD)
 
 Se eligen en el menú principal:
 
-| Nivel | Vida | Máx. soldados | Panel máx. | Paneles rojos | Hordas | Jefe |
+| Nivel | Vida | Paneles rojos | Hordas (resistencia) | Hordas (aparición) | Minijefes | Jefe |
 |---|---|---|---|---|---|---|
-| Fácil | 150 | 40 | +12 | 20 % (−3 a −6) | 70 % | 70 % |
-| Normal | 100 | 30 | +9 | 35 % (−6 a −12) | 100 % | 100 % |
-| Difícil | 70 | 24 | +7 | 50 % (−10 a −18) | 135 %, +20 % de aparición | 115 % |
+| Fácil | 150 | 30 % (−4 a −10) | 80 % | 90 % | 80 % | 80 % |
+| Normal | 100 | 45 % (−4 a −20) | 125 % | 115 % | 100 % | 100 % |
+| Difícil | 70 | 50 % (−6 a −22) | 135 % | 120 % | 100 % | 125 % |
 
 ## 9. SISTEMA DE VIDA Y DAÑO
 
@@ -337,7 +339,11 @@ Características:
 - Ataques especiales.
 - Comportamientos diferenciados.
 
-**MVP (v0.3 del GDD):** tras la oleada 5 aparece el jefe final EL GRAN PORTAVOZ. Sus gritos y panfletos eliminan soldados primero; su vida se ajusta a la potencia de fuego del jugador (arma + soldados) para que el combate dure lo mismo con cualquier ejército.
+**MVP (v0.5 del GDD):** todos los ataques de jefes y minijefes son **cuerpo a cuerpo**, nunca a distancia. Antes de cada golpe aparece una **zona roja** en el suelo: si el protagonista sale de ella, esquiva el golpe. Cada golpe derriba a los soldados que estén dentro de la zona (hasta un máximo por golpe) y, si el protagonista está dentro, también le golpea.
+
+- **Minijefes:** a mitad de cada oleada, desde la 2ª, aparece un minijefe que se acerca corriendo: **EL DE LA PORRA** (porra gigante, zona de golpe ancha) o **EL DE LA BOTELLA** (botella de vidrio rota, más rápido).
+- **Jefe final del Ocean Bridge: EL GRAN PERROFLAUTA** (ficticio y satírico): rastas, cinta en el pelo, barba, poncho de rayas, pantalón bombacho y sandalias, con un **bate de béisbol con pinchos**. Se acerca, golpea, retrocede y, cada tres golpes, llama a la horda. Por debajo de la mitad de vida golpea más rápido.
+- La vida de jefes y minijefes se ajusta a la potencia de fuego del jugador (arma + soldados) y a la dificultad.
 - Secuencia de presentación.
 - Recompensas especiales al derrotarlos.
 

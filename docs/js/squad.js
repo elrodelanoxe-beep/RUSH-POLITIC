@@ -3,7 +3,7 @@ import { bodyGeometries, PART_JOINT, PART_GEO, JOINT_INDEX, makePose, runPose, s
 import { gunGeometry, GUN_TIP } from './player.js';
 import { ROAD } from './config.js';
 
-export const MAX_SQUAD = 40;
+export const MAX_SQUAD = 160;  // límite técnico; en la práctica, sin límite
 const PARTS = ['pelvis', 'torso', 'head', 'helmet', 'thighL', 'shinL', 'shoeL', 'thighR', 'shinR', 'shoeR',
   'upperArmL', 'foreArmL', 'handL', 'upperArmR', 'foreArmR', 'handR', 'vest', 'backpack'];
 const COLORS = {
@@ -16,10 +16,12 @@ const _base = new THREE.Matrix4(), _m = new THREE.Matrix4(), _gunL = new THREE.M
 const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(1, 1, 1), _e = new THREE.Euler();
 
 // Posición de cada soldado respecto al protagonista (detrás y a los lados)
-export function slot(k) {
+// la formación se ensancha a medida que crece el ejército
+export function slot(k, n = 0) {
   if (k < 2) return [k === 0 ? -0.85 : 0.85, 0.15];
-  const r = Math.floor((k - 2) / 4) + 1, c = (k - 2) % 4;
-  return [(c - 1.5) * 0.8 + (r % 2 ? 0.2 : -0.2), r * 0.85];
+  const cols = n <= 22 ? 4 : n <= 60 ? 6 : 9;
+  const r = Math.floor((k - 2) / cols) + 1, c = (k - 2) % cols;
+  return [(c - (cols - 1) / 2) * 0.8 + (r % 2 ? 0.2 : -0.2), r * (cols > 4 ? 0.75 : 0.85)];
 }
 
 // Escuadrón de soldados que corren y disparan con el protagonista
@@ -75,6 +77,14 @@ export class Squad {
     return out;
   }
 
+  // quita los soldados que cumplan la condición (p. ej. dentro de la zona de un golpe)
+  removeWhere(fn) {
+    const out = [], keep = [];
+    for (const m of this.members) (fn(m) ? out : keep).push(m);
+    this.members = keep;
+    return out;
+  }
+
   clear() { this.members.length = 0; this.update(0, 0, 0); }
 
   update(dt, px, pz, onFire) {
@@ -83,7 +93,7 @@ export class Squad {
     const n = this.members.length;
     for (let k = 0; k < n; k++) {
       const m = this.members[k];
-      const [ox, oz] = slot(k);
+      const [ox, oz] = slot(k, this.members.length);
       const tx = Math.max(-lim, Math.min(lim, px + ox)), tz = pz + oz;
       const f = Math.min(1, dt * 8);
       m.x += (tx - m.x) * f; m.z += (tz - m.z) * f;

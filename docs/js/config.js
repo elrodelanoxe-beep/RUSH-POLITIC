@@ -4,7 +4,7 @@
 
 // Versión del juego que se muestra en el menú. Súbela con cada cambio publicado
 // (y también VERSION en sw.js) para comprobar en el móvil qué versión ha cargado.
-export const GAME_VERSION = '0.7';
+export const GAME_VERSION = '0.8';
 
 export const ROAD = {
   halfWidth: 7,        // anchura de la calzada: 14 m
@@ -52,15 +52,16 @@ export const SHOT = { speed: 90, range: 60, spacing: 0.38 };
 // Paneles del carril derecho. Cada impacto suma 1 al número (se ve en cada disparo).
 //  azul  (+N): N soldados · rojo (−N): empieza en negativo; si lo tocas en negativo pierdes N soldados
 //  verde (+N ❤): recupera N puntos de vida
-export const BONUS = { sequence: [1, 1, 2, 1, 2, 2, 1, 3], every: [42, 60], healChance: 0.12, healMul: 2 };
+// Sin máximo: los azules y verdes siempre empiezan en +1; los rojos en negativo.
+export const BONUS = { every: [42, 60], healChance: 0.1 };
 // Soldados: disparan recto con el arma del protagonista (cadencia máxima por soldado).
-export const SQUAD = { maxRate: 4, damage: 0.6, start: 0 };  // cada soldado: máx. 4 disparos/s al 60 % del daño de tu arma
+export const SQUAD = { maxRate: 4, damage: 0.6, start: 0, range: 34, fullFire: 50 };  // cada soldado: máx. 4 disparos/s al 60 % del daño de tu arma
 
 // Tres niveles de dificultad (se eligen en el menú)
 export const DIFFICULTY = {
-  facil:   { label: 'FÁCIL',   hp: 150, horde: 0.7,  rate: 0.85, boss: 0.7, bonusMax: 12, squadMax: 40, negChance: 0.2,  negStart: [3, 6],   squadScale: 45 },
-  normal:  { label: 'NORMAL',  hp: 100, horde: 1,    rate: 1,    boss: 1,   bonusMax: 9,  squadMax: 30, negChance: 0.35, negStart: [6, 12],  squadScale: 30 },
-  dificil: { label: 'DIFÍCIL', hp: 70,  horde: 1.35, rate: 1.2,  boss: 1.15, bonusMax: 7,  squadMax: 24, negChance: 0.5,  negStart: [10, 18], squadScale: 22 },
+  facil:   { label: 'FÁCIL',   hp: 150, horde: 0.8,  rate: 0.9,  boss: 0.8, negChance: 0.3,  negStart: [4, 10],  squadScale: 60, squadSpawn: 140, mini: 0.8 },
+  normal:  { label: 'NORMAL',  hp: 100, horde: 1.25, rate: 1.15, boss: 1.0, negChance: 0.45, negStart: [4, 20],  squadScale: 40, squadSpawn: 100, mini: 1.0 },
+  dificil: { label: 'DIFÍCIL', hp: 70,  horde: 1.35, rate: 1.2,  boss: 1.25, negChance: 0.5,  negStart: [6, 22],  squadScale: 30, squadSpawn: 65, mini: 1.0 },
 };
 export const CRATE = { every: [115, 140], firstAt: 55 };
 
@@ -103,11 +104,20 @@ export const BREAK_DURATION = 6;
 export const SPAWN_DISTANCE = 125;
 export const MAX_ENEMIES = 420;
 
+// Jefe final y minijefes: SOLO ataques cuerpo a cuerpo (avisan con una zona roja en el suelo)
 export const BOSS = {
-  name: 'EL GRAN PORTAVOZ',
-  hp: 900,   // vida base; en partida se ajusta a la potencia del jugador
-  distance: 34,
-  radius: 3.0,
-  shoutDamage: 10,
-  pamphletDamage: 4,
+  name: 'EL GRAN PERROFLAUTA',
+  scale: 3.3, radius: 1.7,
+  startDist: 26, approachSpeed: 9, lateral: 2.6, reach: 5.5, zoneWidth: 5.2, windup: 1.0, backoff: 9,
+  damage: 12,      // soldados que caen dentro de la zona: todos; el protagonista recibe este daño si está dentro
+  summon: 12,      // cada 3 golpes llama a la horda
+};
+export const MINIBOSS = {
+  // aparecen a mitad de cada oleada desde la 2ª
+  fromWave: 1, at: 0.45,
+  hpFactor: 0.08,  // respecto a la vida del jefe final
+  kinds: {
+    porra:   { name: 'EL DE LA PORRA',   scale: 2.2, radius: 1.1, startDist: 60, approachSpeed: 10, lateral: 2.2, reach: 3.6, zoneWidth: 3.4, windup: 0.9, backoff: 6, damage: 8 },
+    botella: { name: 'EL DE LA BOTELLA', scale: 2.1, radius: 1.05, startDist: 60, approachSpeed: 11, lateral: 2.8, reach: 3.2, zoneWidth: 2.8, windup: 0.75, backoff: 6, damage: 6 },
+  },
 };

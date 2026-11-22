@@ -92,6 +92,29 @@ export function bodyGeometries() {
       S(T(cyl(0.19, 0.17, 0.4, 10), 0, 0.27, 0), 1.25, 1, 0.85),
       T(box(0.1, 0.1, 0.05), -0.08, 0.2, 0.15), T(box(0.1, 0.1, 0.05), 0.08, 0.2, 0.15),
     ]),
+    // detalles de la horda (v0.8): cara, barba, braga/pañuelo, gorro de lana, bufanda, estampado, cinturón, suelas, megáfono
+    face: mergeGeos([
+      S(T(sph(0.016, 8, 6), -0.042, 0.135, 0.1), 1, 1.2, 0.6), S(T(sph(0.016, 8, 6), 0.042, 0.135, 0.1), 1, 1.2, 0.6),   // ojos
+      T(R(box(0.05, 0.012, 0.012), 0, 0, 0.18), -0.044, 0.165, 0.105), T(R(box(0.05, 0.012, 0.012), 0, 0, -0.18), 0.044, 0.165, 0.105), // cejas
+      T(box(0.045, 0.012, 0.01), 0, 0.07, 0.11),                                                                     // boca
+    ]),
+    beard: mergeGeos([S(T(sph(0.085, 10, 7), 0, 0.04, 0.03), 1.15, 0.95, 1.05), T(box(0.07, 0.018, 0.02), 0, 0.085, 0.112)]),
+    bandana: mergeGeos([
+      S(T(new THREE.CylinderGeometry(0.118, 0.105, 0.09, 14, 1, true), 0, 0.07, 0.01), 1, 1, 1.12),
+      T(R(new THREE.ConeGeometry(0.06, 0.09, 4), Math.PI, 0, 0), 0, 0.01, 0.1),
+    ]),
+    beanie: mergeGeos([
+      S(T(new THREE.SphereGeometry(0.126, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), 0, 0.165, -0.005), 1.02, 1.15, 1.08),
+      T(cyl(0.127, 0.127, 0.04, 14), 0, 0.17, -0.005), T(sph(0.04, 8, 6), 0, 0.31, -0.01),
+    ]),
+    scarf: mergeGeos([T(new THREE.TorusGeometry(0.085, 0.035, 6, 14).rotateX(Math.PI / 2), 0, 0.52, 0.01), T(R(box(0.07, 0.22, 0.03), 0.1, 0, 0.1), 0.06, 0.4, 0.14)]),
+    print: mergeGeos([T(box(0.17, 0.15, 0.02), 0, 0.31, 0.145)]),
+    belt: mergeGeos([S(T(cyl(0.155, 0.155, 0.04, 12), 0, 0.06, 0), 1.26, 1, 0.84), T(box(0.05, 0.035, 0.02), 0, 0.06, 0.13)]),
+    sole: mergeGeos([T(box(0.135, 0.028, 0.275), 0, -0.085, 0.05)]),
+    megaphone: mergeGeos([
+      T(R(new THREE.CylinderGeometry(0.08, 0.03, 0.22, 12, 1, true), Math.PI / 2, 0, 0), 0, -0.09, 0.14),
+      T(box(0.03, 0.08, 0.04), 0, -0.07, 0.03),
+    ]),
     // pancarta en alto y bandera del líder, relativas al tronco
     sign: mergeGeos([T(cyl(0.018, 0.018, 1.25, 6), 0.27, 1.05, 0.05), T(box(0.8, 0.5, 0.025), 0.27, 1.55, 0.07)]),
     flag: mergeGeos([T(cyl(0.022, 0.022, 2.2, 6), 0.27, 1.25, 0.05), T(box(0.95, 0.6, 0.02), 0.76, 2.0, 0.05)]),
@@ -104,8 +127,10 @@ export const PART_JOINT = {
   thighL: 'hipL', shinL: 'kneeL', shoeL: 'ankleL', thighR: 'hipR', shinR: 'kneeR', shoeR: 'ankleR',
   upperArmL: 'shoulderL', foreArmL: 'elbowL', handL: 'wristL', upperArmR: 'shoulderR', foreArmR: 'elbowR', handR: 'wristR',
   backpack: 'spine', vest: 'spine', sign: 'spine', flag: 'spine',
+  face: 'head', beard: 'head', bandana: 'head', beanie: 'head', scarf: 'spine', print: 'spine', belt: 'pelvis',
+  soleL: 'ankleL', soleR: 'ankleR', megaphone: 'wristL',
 };
-export const PART_GEO = { thighL: 'thigh', thighR: 'thigh', shinL: 'shin', shinR: 'shin', shoeL: 'shoe', shoeR: 'shoe', upperArmL: 'upperArm', upperArmR: 'upperArm', foreArmL: 'foreArm', foreArmR: 'foreArm', handL: 'hand', handR: 'hand' };
+export const PART_GEO = { soleL: 'sole', soleR: 'sole', thighL: 'thigh', thighR: 'thigh', shinL: 'shin', shinR: 'shin', shoeL: 'shoe', shoeR: 'shoe', upperArmL: 'upperArm', upperArmR: 'upperArm', foreArmL: 'foreArm', foreArmR: 'foreArm', handL: 'hand', handR: 'hand' };
 
 // Pose: rotaciones [x, y, z] por articulación (Float32Array de 15*3) + altura extra de la pelvis
 export function makePose() { return { r: new Float32Array(JOINTS.length * 3), bob: 0 }; }
