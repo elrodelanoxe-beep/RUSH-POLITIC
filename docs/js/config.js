@@ -2,6 +2,10 @@
 // Los valores marcados en el GDD como "Pendiente de definir" se fijan aquí
 // para poder jugar, y se pueden ajustar sin tocar el resto del código.
 
+// Versión del juego que se muestra en el menú. Súbela con cada cambio publicado
+// (y también VERSION en sw.js) para comprobar en el móvil qué versión ha cargado.
+export const GAME_VERSION = '0.3';
+
 export const ROAD = {
   halfWidth: 7,        // anchura de la calzada: 14 m
   playerLimit: 6.2,    // límite físico del movimiento lateral
