@@ -1,10 +1,10 @@
 // Service worker: guarda el juego en el móvil para poder jugar sin conexión.
 // Sube el número de versión cada vez que cambie algún archivo del juego.
-const VERSION = 'rush-politic-v1';
+const VERSION = 'rush-politic-v2';
 const FILES = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './vendor/three.module.min.js',
-  './js/main.js', './js/config.js', './js/geom.js', './js/world.js', './js/enemies.js',
+  './js/main.js', './js/config.js', './js/rig.js', './js/geom.js', './js/world.js', './js/enemies.js',
   './js/combat.js', './js/player.js', './js/gates.js', './js/boss.js', './js/audio.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-512-maskable.png', './icons/apple-touch-icon.png',
 ];

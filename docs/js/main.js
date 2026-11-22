@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { ROAD, PLAYER, CAMERA, WEAPONS, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANCE, BOSS } from './config.js';
 import { World } from './world.js';
 import { Horde } from './enemies.js';
-import { Bullets, Particles, Shockwaves } from './combat.js';
-import { PlayerModel } from './player.js';
-import { Gates } from './gates.js';
+import { Bullets, Particles, Shockwaves, Flashes } from './combat.js';
+import { PlayerModel, FLASH_TEX, GLOW_TEX } from './player.js';
+import { Gates, GOOD, BAD } from './gates.js';
 import { Boss } from './boss.js';
 import { Sfx } from './audio.js';
 
@@ -35,6 +35,10 @@ const world = new World(scene);
 const horde = new Horde(scene);
 const bullets = new Bullets(scene);
 const particles = new Particles(scene);
+const sparks = new Particles(scene, 700, true, new THREE.BoxGeometry(0.05, 0.05, 0.05));
+const glowTex = GLOW_TEX();
+const flashes = new Flashes(scene, glowTex, 90);
+const muzzleFx = new Flashes(scene, FLASH_TEX(), 24);
 const shock = new Shockwaves(scene);
 const hero = new PlayerModel(scene);
 const gates = new Gates(scene);
@@ -53,7 +57,7 @@ const G = {
 };
 
 function resetGame() {
-  horde.clear(); bullets.clear(); particles.clear(); gates.clear(); world.clearCars(); boss.reset();
+  horde.clear(); bullets.clear(); particles.clear(); sparks.clear(); flashes.clear(); muzzleFx.clear(); gates.clear(); world.clearCars(); boss.reset();
   Object.assign(G, {
     phase: 'intro', phaseT: 0, px: 0, pz: 0, vx: 0, targetX: 0, aimYaw: 0,
     hp: PLAYER.maxHp, kills: 0, killScore: 0, time: 0,
@@ -76,28 +80,34 @@ function equip(id) {
 
 // ---------- Mejoras (GDD sección 8) ----------
 const OPTIONS = [
-  { id: 'dmg2', label: 'x2', sub: 'DAÑO', color: '#e67e22', w: 3, ok: g => g.dmgMult < 6, apply: g => { g.dmgMult = Math.min(6, g.dmgMult * 2); } },
-  { id: 'dmg3', label: 'x3', sub: 'DAÑO', color: '#c0392b', w: 1, ok: g => g.dmgMult <= 2 && g.waveIndex >= 2, apply: g => { g.dmgMult = Math.min(6, g.dmgMult * 3); } },
-  { id: 'rate20', label: '+20%', sub: 'CADENCIA', color: '#2980b9', w: 2, ok: g => g.rateMult < 2, apply: g => { g.rateMult = Math.min(2, g.rateMult + 0.2); } },
-  { id: 'rate40', label: '+40%', sub: 'CADENCIA', color: '#1c5d99', w: 1.4, ok: g => g.rateMult < 2 && g.waveIndex >= 1, apply: g => { g.rateMult = Math.min(2, g.rateMult + 0.4); } },
-  { id: 'smg', label: 'SUBFUSIL', sub: 'ALTA CADENCIA', color: '#16a085', w: 2.2, ok: g => g.weaponId !== 'subfusil', apply: () => equip('subfusil') },
-  { id: 'sg', label: 'ESCOPETA', sub: 'DAÑO CERCANO', color: '#8e44ad', w: 1.8, ok: g => g.weaponId !== 'escopeta', apply: () => equip('escopeta') },
-  { id: 'ammo100', label: g => g.weaponId === 'escopeta' ? '+30' : '+100', sub: g => g.weaponId === 'escopeta' ? 'CARTUCHOS' : 'BALAS', color: '#636e72', w: 2.2, ok: g => g.weaponId !== 'pistola' && g.ammo < 400, apply: g => { g.ammo += g.weaponId === 'escopeta' ? 30 : 100; } },
-  { id: 'ammo50', label: g => g.weaponId === 'escopeta' ? '+15' : '+50', sub: g => g.weaponId === 'escopeta' ? 'CARTUCHOS' : 'BALAS', color: '#7f8c8d', w: 1, ok: g => g.weaponId !== 'pistola', apply: g => { g.ammo += g.weaponId === 'escopeta' ? 15 : 50; } },
-  { id: 'multi', label: 'MÚLTIPLE', sub: 'DISPARO x' , color: '#d63031', w: 1.5, ok: g => g.multishot < 3, apply: g => { g.multishot++; } },
-  { id: 'pierce', label: 'PERFORANTE', sub: 'ATRAVIESA ENEMIGOS', color: '#2d3436', w: 1.1, ok: g => g.pierce < 2, apply: g => { g.pierce++; } },
-  { id: 'heal', label: '+25', sub: 'VIDA', color: '#27ae60', w: 2.2, ok: g => g.hp < 85, apply: g => { g.hp = Math.min(PLAYER.maxHp, g.hp + 25); } },
-  { id: 'bomb', label: 'BOMBA', sub: 'EXPLOSIÓN EN ÁREA', color: '#f39c12', w: 1.2, ok: g => g.waveIndex >= 1, apply: () => bomb() },
+  { id: 'dmg2', label: 'x2', sub: 'DAÑO', w: 3, ok: g => g.dmgMult < 6, apply: g => { g.dmgMult = Math.min(6, g.dmgMult * 2); } },
+  { id: 'dmg3', label: 'x3', sub: 'DAÑO', w: 1, ok: g => g.dmgMult <= 2 && g.waveIndex >= 2, apply: g => { g.dmgMult = Math.min(6, g.dmgMult * 3); } },
+  { id: 'rate20', label: '+20%', sub: 'CADENCIA', w: 2, ok: g => g.rateMult < 2, apply: g => { g.rateMult = Math.min(2, g.rateMult + 0.2); } },
+  { id: 'rate40', label: '+40%', sub: 'CADENCIA', w: 1.4, ok: g => g.rateMult < 2 && g.waveIndex >= 1, apply: g => { g.rateMult = Math.min(2, g.rateMult + 0.4); } },
+  { id: 'smg', label: 'SUBFUSIL', sub: 'ALTA CADENCIA', w: 2.2, ok: g => g.weaponId !== 'subfusil', apply: () => equip('subfusil') },
+  { id: 'sg', label: 'ESCOPETA', sub: 'DAÑO CERCANO', w: 1.8, ok: g => g.weaponId !== 'escopeta', apply: () => equip('escopeta') },
+  { id: 'ammo100', label: g => g.weaponId === 'escopeta' ? '+30' : '+100', sub: g => g.weaponId === 'escopeta' ? 'CARTUCHOS' : 'BALAS', w: 2.2, ok: g => g.weaponId !== 'pistola' && g.ammo < 400, apply: g => { g.ammo += g.weaponId === 'escopeta' ? 30 : 100; } },
+  { id: 'ammo50', label: g => g.weaponId === 'escopeta' ? '+15' : '+50', sub: g => g.weaponId === 'escopeta' ? 'CARTUCHOS' : 'BALAS', w: 1, ok: g => g.weaponId !== 'pistola', apply: g => { g.ammo += g.weaponId === 'escopeta' ? 15 : 50; } },
+  { id: 'multi', label: '+1', sub: 'DISPARO MÚLTIPLE', w: 1.5, ok: g => g.multishot < 3, apply: g => { g.multishot++; } },
+  { id: 'pierce', label: '+1', sub: 'BALA PERFORANTE', w: 1.1, ok: g => g.pierce < 2, apply: g => { g.pierce++; } },
+  { id: 'heal', label: '+25', sub: 'VIDA', w: 2.2, ok: g => g.hp < 85, apply: g => { g.hp = Math.min(PLAYER.maxHp, g.hp + 25); } },
+  { id: 'bomb', label: 'BOMBA', sub: 'EXPLOSIÓN EN ÁREA', w: 1.2, ok: g => g.waveIndex >= 1, apply: () => bomb() },
+  // trampas en rojo: obligan a fijarse antes de cruzar
+  { id: 'badRate', bad: true, label: '-20%', sub: 'CADENCIA', w: 1, ok: g => g.rateMult > 0.8, apply: g => { g.rateMult = Math.max(0.6, g.rateMult - 0.2); } },
+  { id: 'badHp', bad: true, label: '-15', sub: 'VIDA', w: 1, ok: g => g.hp > 30, apply: g => { g.hp = Math.max(1, g.hp - 15); } },
+  { id: 'badDmg', bad: true, label: '÷2', sub: 'DAÑO', w: 1, ok: g => g.dmgMult >= 2, apply: g => { g.dmgMult = Math.max(1, g.dmgMult / 2); } },
+  { id: 'badAmmo', bad: true, label: '-50', sub: 'BALAS', w: 0.8, ok: g => g.weaponId === 'subfusil' && g.ammo > 80, apply: g => { g.ammo -= 50; } },
 ];
 
 function resolveOpt(o) {
   const r = { ...o, label: typeof o.label === 'function' ? o.label(G) : o.label, sub: typeof o.sub === 'function' ? o.sub(G) : o.sub };
-  if (o.id === 'multi') r.sub = 'DISPARO x' + (G.multishot + 1);
   return r;
 }
 
 function pickOptions() {
-  const pool = OPTIONS.filter(o => o.ok(G));
+  const withTrap = G.waveIndex >= 1 && Math.random() < 0.35;
+  const pool = OPTIONS.filter(o => o.ok(G) && !o.bad);
+  const traps = OPTIONS.filter(o => o.ok(G) && o.bad);
   const take = () => {
     const tot = pool.reduce((s, o) => s + o.w, 0);
     let r = Math.random() * tot;
@@ -105,7 +115,7 @@ function pickOptions() {
     return pool.pop();
   };
   const a = take();
-  let b = take();
+  let b = withTrap && traps.length ? traps[(Math.random() * traps.length) | 0] : take();
   if (a.id.startsWith('ammo') && b && b.id.startsWith('ammo')) b = take() || b;
   return Math.random() < 0.5 ? [resolveOpt(a), resolveOpt(b)] : [resolveOpt(b), resolveOpt(a)];
 }
@@ -223,7 +233,7 @@ function findTarget(range) {
   return best;
 }
 
-const _dir = new THREE.Vector2();
+const _dir = new THREE.Vector2(), _muz = new THREE.Vector3();
 function shoot(dt) {
   const w = WEAPONS[G.weaponId];
   G.fireCd -= dt;
@@ -234,7 +244,9 @@ function shoot(dt) {
   else if (boss.vulnerable) { tx = boss.x; tz = boss.z + 1; extraRange = (G.pz - boss.z) + 4 - w.range; }
   else { G.aimYaw *= 0.9; return; }
   G.fireCd = 1 / (w.rate * G.rateMult);
-  const gx = G.px + 0.35, gz = G.pz - 0.9;
+  hero.group.updateMatrixWorld(true);
+  hero.muzzleWorld(_muz);
+  const gx = _muz.x, gz = _muz.z;
   _dir.set(tx - gx, tz - gz).normalize();
   G.aimYaw = Math.atan2(-_dir.x, -_dir.y);
   const base = Math.atan2(_dir.x, _dir.y);
@@ -248,15 +260,24 @@ function shoot(dt) {
       shots.push(base + off + sp);
     }
   }
-  for (const a of shots) bullets.fire(gx, 1.25, gz, Math.sin(a), Math.cos(a), wr, dmg, G.pierce);
+  for (const a of shots) bullets.fire(gx, _muz.y, gz, Math.sin(a), Math.cos(a), wr, dmg, G.pierce);
   hero.muzzle(); sfx.play(G.weaponId);
+  const big = G.weaponId === 'escopeta' ? 1.6 : 0.9;
+  flashes.emit(_muz.x, _muz.y, _muz.z, big * 0.8, w.color, 0.06, 0.4);
+  muzzleFx.emit(_muz.x, _muz.y, _muz.z - 0.15, big * 0.5, 0xffffff, 0.05, 0.3);
+  sparks.emit(_muz.x, _muz.y, _muz.z - 0.2, G.weaponId === 'escopeta' ? 6 : 2, [0xffe9a8, 0xffb347], 5, 0.12, 1, 0);
+  particles.emit(_muz.x + 0.08, _muz.y + 0.05, _muz.z + 0.25, 1, 0xd4a017, 2.2, 0.5, 0.35, 12);  // casquillo
   if (G.weaponId !== 'pistola') {
     G.ammo -= 1;
     if (G.ammo <= 0) { toast('SIN MUNICIÓN', '#ff7675'); sfx.play('empty'); equip('pistola'); G.ammo = Infinity; }
   }
 }
 
-const SPARK = [0xfff3b0, 0xffd166, 0xffffff];
+const SPARK = [0xfff3b0, 0xffd166, 0xffffff, 0xffa040];
+function impact(x, y, z, dmg) {
+  flashes.emit(x, y, z, 0.7 + Math.min(1, dmg * 0.08), 0xffd27a, 0.1, 1.4);
+  sparks.emit(x, y, z, 4, SPARK, 6, 0.22, 1, 6);
+}
 const CONFETTI = [0xff4d6d, 0xffd166, 0x06d6a0, 0x4cc9f0, 0xffffff];
 function bulletHit(b, x0, z0, x1, z1) {
   let consumed = false;
@@ -273,8 +294,8 @@ function bulletHit(b, x0, z0, x1, z1) {
       particles.emit(e.x, 0.3, e.z, 3, 0xdddddd, 2, 0.3, 0.6);
       return;
     }
-    e.hp -= b.dmg; e.flash = 0.07; e.z -= 0.25 * Math.min(2, b.dmg);
-    particles.emit(bx, 1.2, e.z + 0.3, 2, SPARK, 3, 0.25, 0.6, 4);
+    e.hp -= b.dmg; e.flash = 0.07; e.z -= 0.25 * Math.min(2, b.dmg); e.recoil = 1;
+    impact(bx, b.y, e.z + 0.25, b.dmg);
     sfx.play('hit');
     if (e.hp <= 0) enemyDown(e);
     b.lastHit = e.i;
@@ -283,7 +304,7 @@ function bulletHit(b, x0, z0, x1, z1) {
   });
   if (consumed) return true;
   if (boss.vulnerable && z1 <= boss.z + 1 && Math.abs(x1 - boss.x) < BOSS.radius) {
-    particles.emit(x1, rand(3, 6), boss.z + 1.5, 2, SPARK, 4, 0.3, 0.8, 4);
+    impact(x1, b.y + rand(1, 4), boss.z + 2, b.dmg);
     sfx.play('hit');
     if (boss.damage(b.dmg)) {
       G.killScore += 2000; sfx.play('win');
@@ -501,11 +522,13 @@ function step(dt) {
   }
   bullets.update(dt, bulletHit);
   particles.update(dt);
+  sparks.update(dt);
   shock.update(dt);
   gates.update(dt, G.px, G.pz, opt => {
     const o = OPTIONS.find(o => o.id === opt.id);
     o.apply(G); sfx.play('gate');
-    toast(`${opt.label} ${opt.sub}`, opt.color);
+    toast(`${opt.label} ${opt.sub}`, opt.bad ? '#ff6b6b' : '#6ec1ff');
+    if (opt.bad) { sfx.play('hurt'); G.shake = 0.3; }
     particles.emit(G.px, 1.5, G.pz - 0.5, 18, [0xffffff, 0x9be7ff, 0xffe066], 5, 0.7, 0.9);
   });
   boss.update(dt, G.px, G.pz, bossCb);
@@ -524,6 +547,7 @@ function step(dt) {
   camLook.set(G.px * 0.4, 1 + intro * 3, G.pz - CAMERA.lookAhead - G.camBoss * 6);
   camera.lookAt(camLook);
   world.update(dt, G.pz, camera);
+  flashes.update(dt, camera); muzzleFx.update(dt, camera);
 }
 
 function frame(now) {
@@ -554,7 +578,7 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // utilidades de prueba (no afectan al juego)
-window.__rp = { G, horde, boss, startGame, WAVES, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
+window.__rp = { G, horde, boss, startGame, WAVES, renderer, scene, camera, hero, gates, sim: (sec, bot) => { for (let t = 0; t < sec && G.mode === 'play'; t += 1 / 60) { if (bot) bot(G); step(1 / 60); } updateHud(); } };
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
