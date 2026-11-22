@@ -4,7 +4,7 @@
 
 // Versión del juego que se muestra en el menú. Súbela con cada cambio publicado
 // (y también VERSION en sw.js) para comprobar en el móvil qué versión ha cargado.
-export const GAME_VERSION = '0.3';
+export const GAME_VERSION = '0.4';
 
 export const ROAD = {
   halfWidth: 7,        // anchura de la calzada: 14 m

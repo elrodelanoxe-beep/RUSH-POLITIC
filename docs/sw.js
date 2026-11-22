@@ -1,6 +1,6 @@
 // Service worker: guarda el juego en el móvil para poder jugar sin conexión.
 // Sube el número de versión cada vez que cambie algún archivo del juego.
-const VERSION = 'rush-politic-v0.3';
+const VERSION = 'rush-politic-v0.4';
 const FILES = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './vendor/three.module.min.js',
@@ -18,10 +18,14 @@ self.addEventListener('activate', e => {
 });
 
 // Red primero (para recibir actualizaciones) y caché si no hay conexión.
+// cache: 'no-cache' obliga a comprobar con el servidor y evita que la caché
+// HTTP del navegador (hasta 10 min en GitHub Pages) sirva archivos antiguos.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const sameOrigin = new URL(e.request.url).origin === location.origin;
+  const req = sameOrigin ? fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(e.request);
   e.respondWith(
-    fetch(e.request).then(res => {
+    req.then(res => {
       if (res.ok && new URL(e.request.url).origin === location.origin) {
         const copy = res.clone();
         caches.open(VERSION).then(c => c.put(e.request, copy));
