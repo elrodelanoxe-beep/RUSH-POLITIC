@@ -1,44 +1,94 @@
 import * as THREE from 'three';
 
 const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _e = new THREE.Euler();
-const _c = new THREE.Color(), _white = new THREE.Color(0xffffff);
+const _c = new THREE.Color(), _c2 = new THREE.Color(), _white = new THREE.Color(0xffffff);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const _fwd = new THREE.Vector3(0, 0, 1), _v = new THREE.Vector3();
 
 // Proyectiles con object pooling (GDD sección 15)
+// (v1.1) Proyectiles con forma según el arma, en vez de rayos láser:
+//   bala   → punta metálica + estela corta que se desvanece (pistola, subfusil, escopeta, rifle, ametralladora)
+//   cohete → cuerpo con aletas + llama de escape + humo (lanzacohetes, cañón)
+//   energía → orbe brillante con halo que palpita (arma energética)
+function taperedTrail(len, r) {
+  // cono tumbado hacia atrás (punta en la cola)
+  const g = new THREE.ConeGeometry(r, len, 8, 1, true); g.rotateX(-Math.PI / 2); g.translate(0, 0, len / 2); return g;
+}
+function bulletHead() {
+  const tip = new THREE.ConeGeometry(0.055, 0.13, 8); tip.rotateX(-Math.PI / 2); tip.translate(0, 0, -0.165);
+  const body = new THREE.CylinderGeometry(0.055, 0.055, 0.2, 8); body.rotateX(Math.PI / 2);
+  return mergeSimple([tip, body]);
+}
+function rocketBody() {
+  const parts = [];
+  const body = new THREE.CylinderGeometry(0.075, 0.075, 0.5, 10); body.rotateX(Math.PI / 2); parts.push(body);
+  const nose = new THREE.ConeGeometry(0.075, 0.18, 10); nose.rotateX(-Math.PI / 2); nose.translate(0, 0, -0.34); parts.push(nose);
+  for (let k = 0; k < 4; k++) { const f = new THREE.BoxGeometry(0.02, 0.12, 0.14); f.translate(0, 0.1, 0.2); f.rotateZ(k * Math.PI / 2); parts.push(f); }
+  return mergeSimple(parts);
+}
+function mergeSimple(list) {
+  const pos = [], nor = [];
+  for (const g0 of list) { const g = g0.index ? g0.toNonIndexed() : g0; pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array); }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  return out;
+}
+export const SHOT_KIND = { lanzacohetes: 'rocket', canon: 'rocket', energetica: 'energy' };
+
 export class Bullets {
   constructor(scene, max = 800) {
-    // núcleo brillante + halo de color: trazadoras visibles
-    const core = new THREE.BoxGeometry(0.045, 0.045, 1.5); core.translate(0, 0, -0.5);
-    const glow = new THREE.BoxGeometry(0.16, 0.16, 2.3); glow.translate(0, 0, -0.8);
     const add = { blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false };
-    this.mesh = new THREE.InstancedMesh(core, new THREE.MeshBasicMaterial({ color: 0xffffff, ...add }), max);
-    this.glow = new THREE.InstancedMesh(glow, new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.55, ...add }), max);
-    for (const m of [this.mesh, this.glow]) {
-      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      m.frustumCulled = false;
+    const mk = (geo, mat) => {
+      const m = new THREE.InstancedMesh(geo, mat, max);
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false;
       for (let i = 0; i < max; i++) { m.setMatrixAt(i, ZERO); m.setColorAt(i, _c.set(0xffffff)); }
-      scene.add(m);
-    }
+      scene.add(m); return m;
+    };
+    this.kinds = {
+      bullet: [mk(bulletHead(), new THREE.MeshBasicMaterial({ color: 0xffffff })),
+        mk(taperedTrail(1.1, 0.05), new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.6, ...add })),
+        mk(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.45, ...add }))],
+      rocket: [mk(rocketBody(), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x222222 })),
+        mk(taperedTrail(0.9, 0.11), new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.85, ...add })),
+        mk(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.6, ...add }))],
+      energy: [mk(new THREE.SphereGeometry(0.09, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, ...add })),
+        mk(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.35, ...add })),
+        mk(taperedTrail(0.6, 0.12), new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.3, ...add }))],
+    };
+    this.all = Object.values(this.kinds).flat();
     this.list = [];
-    for (let i = 0; i < max; i++) this.list.push({ active: false, i });
+    for (let i = 0; i < max; i++) this.list.push({ active: false, i, kind: 'bullet' });
+    this.free = this.list.slice();
+    this.onTrail = null;  // (x, y, z, b) → humo de los cohetes
   }
 
   fire(x, y, z, dirX, dirZ, w, dmg, pierce) {
-    const b = this.list.find(b => !b.active);
+    const b = this.free.pop();
     if (!b) return;
     const len = Math.hypot(dirX, dirZ) || 1;
+    const kind = w.kind || 'bullet';
+    if (b.kind !== kind) for (const m of this.kinds[b.kind]) m.setMatrixAt(b.i, ZERO);
     Object.assign(b, {
-      active: true, x, y, z, vx: dirX / len * w.speed, vz: dirZ / len * w.speed,
+      active: true, x, y, z, vx: dirX / len * w.speed, vz: dirZ / len * w.speed, kind,
       life: w.range / w.speed, dmg, pierce, size: w.size, hitSet: null, age: 0, lastHit: -1, ally: false, splash: 0,
+      wob: Math.random() * 6.28, trailT: 0,
     });
-    this.mesh.setColorAt(b.i, _c.set(w.color).lerp(_white, 0.6));
-    this.glow.setColorAt(b.i, _c.set(w.color));
-    this.mesh.instanceColor.needsUpdate = true; this.glow.instanceColor.needsUpdate = true;
+    const [a, t, c] = this.kinds[kind];
+    if (kind === 'bullet') { a.setColorAt(b.i, _c.set(0xffe2a0).lerp(_c2.set(w.color), 0.25)); t.setColorAt(b.i, _c.set(w.color)); c.setColorAt(b.i, _c.set(w.color).lerp(_white, 0.4)); }
+    else if (kind === 'rocket') { a.setColorAt(b.i, _c.set(0x55613f)); t.setColorAt(b.i, _c.set(0xffb347)); c.setColorAt(b.i, _c.set(0xff7b3b)); }
+    else { a.setColorAt(b.i, _c.set(0xffffff)); t.setColorAt(b.i, _c.set(w.color)); c.setColorAt(b.i, _c.set(w.color)); }
+    for (const m of this.kinds[kind]) m.instanceColor.needsUpdate = true;
     return b;
   }
 
-  clear() { for (const b of this.list) { b.active = false; this.mesh.setMatrixAt(b.i, ZERO); this.glow.setMatrixAt(b.i, ZERO); } this.mesh.instanceMatrix.needsUpdate = true; this.glow.instanceMatrix.needsUpdate = true; }
+  _hide(b) { for (const m of this.kinds[b.kind]) m.setMatrixAt(b.i, ZERO); }
+
+  clear() {
+    for (const b of this.list) { if (b.active) { b.active = false; this._hide(b); } }
+    this.free = this.list.slice();
+    for (const m of this.all) m.instanceMatrix.needsUpdate = true;
+  }
 
   // onHit(b, x0, z0, x1, z1) devuelve true si la bala debe desaparecer
   update(dt, onHit) {
@@ -47,14 +97,36 @@ export class Bullets {
       const x0 = b.x, z0 = b.z;
       b.x += b.vx * dt; b.z += b.vz * dt; b.life -= dt;
       if (b.life <= 0 || onHit(b, x0, z0, b.x, b.z)) {
-        b.active = false; this.mesh.setMatrixAt(b.i, ZERO); this.glow.setMatrixAt(b.i, ZERO); continue;
+        b.active = false; this._hide(b); this.free.push(b); continue;
       }
-      b.age = (b.age || 0) + dt;
-      const stretch = Math.min(1, b.age * 14);   // la estela crece al salir del cañón
-      _m.compose(_p.set(b.x, b.y, b.z), _q.setFromEuler(_e.set(0, Math.atan2(b.vx, b.vz), 0)), _s.set(b.size, b.size, b.size * stretch));
-      this.mesh.setMatrixAt(b.i, _m); this.glow.setMatrixAt(b.i, _m);
+      b.age += dt;
+      const yaw = Math.atan2(b.vx, b.vz) + Math.PI;  // las geometrías miran hacia -Z
+      _q.setFromEuler(_e.set(0, yaw, 0));
+      const sz = b.size, grow = Math.min(1, b.age * 10);
+      const [a, t, c] = this.kinds[b.kind];
+      if (b.kind === 'bullet') {
+        a.setMatrixAt(b.i, _m.compose(_p.set(b.x, b.y, b.z), _q, _s.set(sz, sz, sz)));
+        t.setMatrixAt(b.i, _m.compose(_p, _q, _s.set(sz, sz, sz * grow * (0.85 + 0.3 * Math.random()))));
+        const fl = b.age < 0.05 ? 2.2 : 1;  // destello al salir
+        c.setMatrixAt(b.i, _m.compose(_p, _q, _s.set(sz * fl, sz * fl, sz * fl * 1.6)));
+      } else if (b.kind === 'rocket') {
+        const r = sz * 1.1;
+        _q.multiply(_q2.setFromAxisAngle(_fwd, b.age * 9));  // gira sobre sí mismo
+        a.setMatrixAt(b.i, _m.compose(_p.set(b.x, b.y, b.z), _q, _s.set(r, r, r)));
+        const fl = 0.8 + 0.4 * Math.random();
+        _v.set(0, 0, 0.32 * r).applyQuaternion(_q);
+        t.setMatrixAt(b.i, _m.compose(_p.set(b.x + _v.x, b.y, b.z + _v.z), _q, _s.set(r * fl, r * fl, r * fl * grow)));
+        c.setMatrixAt(b.i, _m.compose(_p, _q, _s.set(r * fl, r * fl, r * fl)));
+        b.trailT -= dt;
+        if (this.onTrail && b.trailT <= 0) { b.trailT = b.ally ? 0.14 : 0.035; this.onTrail(b.x + _v.x, b.y, b.z + _v.z, b); }
+      } else {
+        const pulse = 1 + 0.25 * Math.sin(b.age * 40 + b.wob);
+        a.setMatrixAt(b.i, _m.compose(_p.set(b.x, b.y, b.z), _q, _s.set(sz * pulse, sz * pulse, sz * pulse)));
+        t.setMatrixAt(b.i, _m.compose(_p, _q, _s.set(sz * pulse, sz * pulse, sz * pulse)));
+        c.setMatrixAt(b.i, _m.compose(_p, _q, _s.set(sz, sz, sz * grow)));
+      }
     }
-    this.mesh.instanceMatrix.needsUpdate = true; this.glow.instanceMatrix.needsUpdate = true;
+    for (const m of this.all) m.instanceMatrix.needsUpdate = true;
   }
 }
 

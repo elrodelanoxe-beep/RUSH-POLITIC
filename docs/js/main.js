@@ -3,7 +3,7 @@ import { ROAD, PLAYER, CAMERA, ENEMY_TYPES, WAVES, BREAK_DURATION, SPAWN_DISTANC
 import { Squad, slot } from './squad.js';
 import { World } from './world.js';
 import { Horde } from './enemies.js';
-import { Bullets, Particles, Shockwaves, Flashes } from './combat.js';
+import { Bullets, Particles, Shockwaves, Flashes, SHOT_KIND } from './combat.js';
 import { PlayerModel, FLASH_TEX, GLOW_TEX } from './player.js';
 import { WeaponCrates, BonusTokens } from './pickups.js';
 import { Boss, Brute } from './boss.js';
@@ -35,6 +35,8 @@ resize();
 const world = new World(scene);
 const horde = new Horde(scene);
 const bullets = new Bullets(scene);
+// humo de los cohetes (sube despacio)
+bullets.onTrail = (x, y, z) => particles.emit(x, y, z, 1, [0x9a9a9a, 0xc8c8c8, 0x777777], 0.5, 0.55, 0.9, -1.5);
 const particles = new Particles(scene);
 const sparks = new Particles(scene, 700, true, new THREE.BoxGeometry(0.05, 0.05, 0.05));
 const glowTex = GLOW_TEX();
@@ -142,7 +144,7 @@ function updateDirector(dt) {
       if (G.phaseT > 2.2) { setPhase('wave'); banner('OLEADA 1', 'Izquierda: armas · Centro: horda · Derecha: bonus'); }
       break;
     case 'wave': {
-      G.spawnAcc += W.rate * D().rate * (1 + squad.count / D().squadSpawn) * dt * (0.7 + 0.6 * G.phaseT / W.duration);
+      G.spawnAcc += W.rate * D().rate * (1 + squadEff() / D().squadSpawn) * dt * (0.7 + 0.6 * G.phaseT / W.duration);
       while (G.spawnAcc >= 1) G.spawnAcc -= spawnOne(W);
       const leaders = W.leaders || 0;
       if (G.leadersDone < leaders && G.phaseT > (G.leadersDone + 0.5) * W.duration / leaders) { G.leadersDone++; spawnLeaderGroup(W); }
@@ -169,7 +171,7 @@ function updateDirector(dt) {
       }
       break;
     case 'preboss':
-      if (G.phaseT > 4) { setPhase('boss'); boss.start(G.pz, bossHp()); sfx.play('boss'); banner(BOSS.name, 'JEFE FINAL', true); ui.bossBar.classList.remove('hidden'); }
+      if (G.phaseT > 3) { setPhase('boss'); for (const m of minis) m.reset(); boss.start(G.pz, bossHp()); sfx.play('boss'); banner(BOSS.name, 'JEFE FINAL', true); ui.bossBar.classList.remove('hidden'); }
       break;
     case 'boss':
       break;
@@ -198,7 +200,7 @@ function bossHp() {
   const w = weapon();
   const eff = squadEff();
   const dps = (w.rate * w.shots + eff * Math.min(w.rate, SQUAD.maxRate) * SQUAD.damage) * w.damage * 0.7;
-  return Math.round(clamp(dps * 12 * D().boss, 300, 200000));
+  return Math.round(clamp(dps * 9 * D().boss, 300, 200000));
 }
 
 // ---------- Combate ----------
@@ -243,7 +245,7 @@ function shoot(dt) {
   hero.group.updateMatrixWorld(true);
   hero.muzzleWorld(_muz);
   const dmg = w.damage * powerMult();
-  const props = { speed: SHOT.speed, range: SHOT.range, size: 1 + w.damage * 0.04, color: w.color };
+  const props = { speed: SHOT_KIND[w.id] === 'rocket' ? SHOT.speed * 0.6 : SHOT.speed, range: SHOT.range, size: 1 + w.damage * 0.04, color: w.color, kind: SHOT_KIND[w.id] };
   for (let m = 0; m < w.shots; m++) {
     const off = (m - (w.shots - 1) / 2) * SHOT.spacing;
     const b = bullets.fire(G.px + off, _muz.y, _muz.z, 0, -1, props, dmg, 0);
@@ -263,7 +265,7 @@ function squadFire(m) {
   // y por encima de 50 soldados la potencia total crece más despacio (raíz cuadrada) para mantener el equilibrio
   const k = Math.max(1, squad.count / SQUAD.fullFire);
   const rate = Math.min(w.rate, SQUAD.maxRate) / k;
-  const props = { speed: SHOT.speed, range: SQUAD.range, size: 0.9, color: w.color };
+  const props = { speed: SHOT_KIND[w.id] === 'rocket' ? SHOT.speed * 0.6 : SHOT.speed, range: SQUAD.range, size: 0.85, color: w.color, kind: SHOT_KIND[w.id] };
   const b = bullets.fire(m.x + 0.3, 1.38, m.z - 0.9, 0, -1, props, w.damage * SQUAD.damage * Math.sqrt(k), 0);
   if (b) { b.splash = w.splash || 0; b.ally = true; b.panelW = SQUAD.panelHit * Math.sqrt(k); }
   if (Math.random() < 0.3) flashes.emit(m.x + 0.3, 1.38, m.z - 1, 0.5, w.color, 0.05, 0.4);
@@ -359,6 +361,8 @@ function meleeStrike(zone, dmg) {
   if (lost.length) floatText('-' + lost.length + ' 👤', 'dmg');
   G.shake = Math.min(0.7, G.shake + 0.35);
   shock.emit(zone.x, (zone.z0 + zone.z1) / 2, zone.w * 0.8, 0xff4d6d, 0.35);
+  // polvo y cascotes donde golpea
+  for (let i = 0; i < 6; i++) particles.emit(zone.x + rand(-zone.w / 2, zone.w / 2), 0.3, rand(zone.z0, zone.z1), 4, [0x8d8d8d, 0x6d6d6d, 0xb0a48c], 4, 0.7, 1.2, 9);
   sfx.play('car');
   if (inZone(G.px, G.pz)) takeHit(dmg);
 }
