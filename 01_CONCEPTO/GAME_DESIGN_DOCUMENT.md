@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 0.7 – Soldados sin límite, disparo por grupos y partidas más cortas |
+| Versión | 0.8 – Proyectiles por arma, disparo desincronizado y jefes más detallados |
 | Estado | Diseño conceptual |
 | Tipo | Videojuego 3D de acción, supervivencia y runner |
 | Plataforma objetivo | Móviles (Android / iOS) |
@@ -231,13 +231,13 @@ Cada arma nueva es más potente que la anterior y mejora una sola cosa: la caden
 | Nivel | Arma | Mejora | Contador |
 |---|---|---|---|
 | 0 | Pistola | Arma inicial | — |
-| 1 | Subfusil | Cadencia | 10 |
-| 2 | Escopeta | Daño | 24 |
-| 3 | Rifle de asalto | Disparos múltiples | 55 |
-| 4 | Ametralladora | Cadencia | 100 |
-| 5 | Lanzacohetes | Daño (con explosión) | 175 |
-| 6 | Arma energética | Disparos múltiples | 300 |
-| 7 | Cañón pesado | Daño | 480 |
+| 1 | Subfusil | Cadencia | 8 |
+| 2 | Escopeta | Daño | 18 |
+| 3 | Rifle de asalto | Disparos múltiples | 40 |
+| 4 | Ametralladora | Cadencia | 75 |
+| 5 | Lanzacohetes | Daño (con explosión) | 130 |
+| 6 | Arma energética | Disparos múltiples | 220 |
+| 7 | Cañón pesado | Daño | 350 |
 
 Los valores están en `docs/js/config.js` y se pueden ajustar.
 
@@ -289,7 +289,9 @@ En el carril derecho aparecen paneles de bonus con valores como +1, +1, +2, +2, 
 - **(v0.6 del GDD)** Las balas de los soldados también suben el panel (0,25 por bala), y basta con que **el protagonista o cualquier soldado** atraviese el panel para cogerlo (o para recibir la penalización si es rojo y sigue en negativo). No hace falta colocarse en un punto exacto.
 - **Formación del ejército:** cuanto más grande, más ancha (de 4 a 16 columnas, casi toda la carretera). Se desplaza para no salirse de la calzada.
 - **(v0.7 del GDD) Sin límite de soldados.** Cada grupo reclutado en un panel tiene su **propio contador de disparo**, desfasado y con una cadencia ligeramente distinta, para que los grupos nunca disparen a la vez y el fuego parezca continuo.
-- **Partidas más cortas:** las oleadas duran 14–17 s y los descansos 4 s, así que el jefe final aparece hacia el minuto y medio y el ejército no crece sin control.
+- **Partidas más cortas (v0.8 del GDD):** las oleadas duran 11–14 s y los descansos 3 s, así que el jefe final aparece hacia los 75 segundos y el ejército no crece sin control.
+- **Disparo desincronizado:** además del ritmo propio de cada grupo, cada soldado empieza en un momento distinto y cada disparo lleva un pequeño desfase aleatorio (±15 %), para que nunca vuelvan a disparar a la vez.
+- **Proyectiles con forma según el arma:** balas con punta metálica y estela corta (pistola a ametralladora), cohetes con aletas, llama y humo (lanzacohetes y cañón) y orbes brillantes que palpitan (arma energética).
 - **Valores iniciales (v0.5 del GDD):** los paneles azules y verdes siempre empiezan en **+1**; los rojos empiezan en negativo (de −4 a −20 en Normal). Nunca aparece un +2 o más de inicio: el número solo crece disparando.
 - **Tipos de panel:**
   - **Azul (+N):** al atravesarlo se suman N **soldados**. Corren en formación junto al protagonista (la formación se ensancha cuanto más grande es), llevan la misma arma y disparan recto hacia delante con **menos alcance** que el protagonista.
@@ -347,6 +349,7 @@ Características:
 
 - **Minijefes:** a mitad de cada oleada, desde la 2ª, aparece un minijefe que se acerca corriendo: **EL DE LA PORRA** (porra gigante, zona de golpe ancha) o **EL DE LA BOTELLA** (botella de vidrio rota, más rápido).
 - **Jefe final del Ocean Bridge: EL GRAN PERROFLAUTA** (ficticio y satírico): rastas, cinta en el pelo, barba, poncho de rayas, pantalón bombacho y sandalias, con un **bate de béisbol con pinchos**. Se acerca, golpea, retrocede y, cada tres golpes, llama a la horda. Por debajo de la mitad de vida golpea más rápido.
+- **Detalle (v0.8 del GDD):** el Gran Perroflauta lleva collar de cuentas con símbolo de la paz, pendientes, parches en el pantalón, una flauta en el cinturón y le acompaña su perro. El de la Porra lleva gafas de esquí, rodilleras, coderas y guantes; el de la Botella, tatuajes, cadena, gafas de sol y zapatillas rojas. El arma brilla en rojo mientras cargan el golpe y cada golpe levanta polvo y cascotes.
 - La vida de jefes y minijefes se ajusta a la potencia de fuego del jugador (arma + soldados) y a la dificultad.
 - Secuencia de presentación.
 - Recompensas especiales al derrotarlos.

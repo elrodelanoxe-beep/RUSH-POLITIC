@@ -83,7 +83,8 @@ export class Squad {
     this.groups++;
     for (let i = 0; i < n; i++) {
       this.members.push({ x: fromX + (Math.random() - 0.5), z: fromZ + Math.random(), phase: Math.random() * 6.28,
-        group: g, fireCd: g.offset * 0.3 + Math.random() * 0.04 });
+        // (v1.1) cada soldado arranca en un momento distinto del ciclo y con su propio ritmo
+        group: g, fireCd: Math.random() * 0.5, rateMul: g.rateMul * (0.9 + Math.random() * 0.2) });
     }
     if (this.members.length > this.cap) {
       let c = this.cap; while (c < this.members.length) c *= 2;
@@ -136,7 +137,8 @@ export class Squad {
       _m.multiplyMatrices(_t, J[wr]).multiply(_gunL); gun.setMatrixAt(k, _m);
       _m.makeTranslation(m.x, 0.025, m.z); this.shadow.setMatrixAt(k, _m);
       m.fireCd -= dt;
-      if (onFire && m.fireCd <= 0) { m.fireCd += (onFire(m) || 0.25) / (m.group ? m.group.rateMul : 1); if (m.fireCd < 0) m.fireCd = 0; }
+      // tras cada disparo, un pequeño desfase aleatorio (±15 %) para que nunca vuelvan a sincronizarse
+      if (onFire && m.fireCd <= 0) { m.fireCd += (onFire(m) || 0.25) / (m.rateMul || 1) * (0.85 + Math.random() * 0.3); if (m.fireCd < 0) m.fireCd = Math.random() * 0.05; }
     }
     for (const im of this.parts) { im.count = n; im.instanceMatrix.needsUpdate = true; }
     gun.count = n; gun.instanceMatrix.needsUpdate = true;

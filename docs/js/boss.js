@@ -93,6 +93,22 @@ const LOOKS = {
       dread.push(tint(S(T(sph(0.09, 10, 7), 0, 0.03, 0.035), 1.15, 1.1, 1.05), 0x6d4c41));
       dread.push(tint(T(new THREE.TorusGeometry(0.012, 0.004, 5, 10), 0.012, 0.09, 0.15), 0xd4d4d4));
       at('head', mergeGeos(dread), vcMat());
+      // (v1.1) collar de cuentas con símbolo de la paz, pendientes, parches en el pantalón y flauta en el cinturón
+      const neck = [];
+      for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; neck.push(tint(T(sph(0.018, 6, 5), Math.cos(a) * 0.11, 0.5 - Math.max(0, Math.sin(a)) * 0.07, Math.sin(a) * 0.09 + 0.02), [0xe53935, 0xfdd835, 0x43a047, 0x1e88e5][i % 4])); }
+      neck.push(tint(T(new THREE.TorusGeometry(0.035, 0.008, 6, 16), 0, 0.42, 0.17), 0xeeeeee));
+      neck.push(tint(T(box(0.007, 0.065, 0.008), 0, 0.42, 0.17), 0xeeeeee));
+      neck.push(tint(T(R(box(0.007, 0.035, 0.008), 0, 0, 0.7), -0.012, 0.405, 0.17), 0xeeeeee));
+      neck.push(tint(T(R(box(0.007, 0.035, 0.008), 0, 0, -0.7), 0.012, 0.405, 0.17), 0xeeeeee));
+      at('spine', mergeGeos(neck), vcMat());
+      at('head', mergeGeos([tint(T(new THREE.TorusGeometry(0.014, 0.004, 5, 10), -0.118, 0.085, 0), 0xffd54f), tint(T(new THREE.TorusGeometry(0.014, 0.004, 5, 10), 0.118, 0.085, 0), 0xffd54f)]), vcMat());
+      at('hipL', mergeGeos([tint(T(box(0.1, 0.1, 0.02), 0, -0.22, 0.14), 0xff7043), tint(T(box(0.08, 0.08, 0.02), 0.02, -0.36, 0.13), 0x26a69a)]), vcMat());
+      at('hipR', mergeGeos([tint(T(box(0.09, 0.11, 0.02), 0, -0.28, 0.14), 0xfdd835)]), vcMat());
+      at('kneeL', mergeGeos([tint(T(box(0.1, 0.07, 0.02), 0, -0.2, 0.12), 0x8d6e63)]), vcMat());
+      at('pelvis', mergeGeos([
+        tint(T(R(cyl(0.014, 0.014, 0.34, 8), 0.2, 0, 0.6), -0.12, 0.05, 0.16), 0xa1887f),
+        tint(T(R(cyl(0.017, 0.017, 0.04, 8), 0.2, 0, 0.6), -0.21, 0.11, 0.18), 0x5d4037),
+      ]), vcMat());
       // pulseras y riñonera
       for (const sd of ['L', 'R']) at('elbow' + sd, mergeGeos([tint(T(cyl(0.05, 0.05, 0.03, 10), 0, -0.22, 0), 0xffca28), tint(T(cyl(0.048, 0.048, 0.02, 10), 0, -0.18, 0), 0x43a047)]), vcMat());
       at('pelvis', mergeGeos([tint(T(box(0.22, 0.09, 0.07), 0, 0.03, 0.17), 0x00897b), tint(T(cyl(0.16, 0.16, 0.025, 12).scale(1.27, 1, 0.86), 0, 0.03, 0), 0x004d40)]), vcMat());
@@ -108,12 +124,19 @@ const LOOKS = {
         tint(S(T(new THREE.CylinderGeometry(0.118, 0.105, 0.09, 14, 1, true), 0, 0.07, 0.01), 1, 1, 1.12), 0x111111),
       ]), vcMat()).material.side = THREE.DoubleSide;
       at('spine', mergeGeos([tint(T(box(0.17, 0.15, 0.02), 0, 0.31, 0.145), 0xd7263d), tint(T(box(0.3, 0.38, 0.13), 0, 0.27, -0.2), 0x2d3436)]), vcMat());
+      // (v1.1) gafas de esquí, rodilleras, coderas y guantes
+      at('head', mergeGeos([tint(S(T(box(0.2, 0.055, 0.04), 0, 0.14, 0.1), 1, 1, 1), 0xff9800), tint(T(box(0.21, 0.02, 0.03), 0, 0.14, 0.085), 0x111111)]), vcMat());
+      for (const sd of ['L', 'R']) {
+        at('knee' + sd, mergeGeos([tint(S(T(sph(0.07, 10, 7), 0, 0, 0.05), 1, 1, 0.7), 0x37474f)]), vcMat());
+        at('elbow' + sd, mergeGeos([tint(S(T(sph(0.055, 10, 7), 0, 0, -0.03), 1, 1, 0.7), 0x37474f)]), vcMat());
+        at('wrist' + sd, mergeGeos([tint(S(T(sph(0.05, 8, 6), 0, -0.04, 0), 1, 1.2, 0.8), 0x111111)]), vcMat());
+      }
     },
     weapon: batonGeo,
   },
   botella: {
     skinHex: 0xe0ac69, bareArms: true,
-    mats: { top: lam(0xf5f5f5), pants: lam(0x3b5b7d), skin: lam(0xe0ac69), shoe: lam(0xf5f5f5) },
+    mats: { top: lam(0xf5f5f5), pants: lam(0x3b5b7d), skin: lam(0xe0ac69), shoe: lam(0xd32f2f) },
     extra(o, at) {
       at('head', mergeGeos([
         tint(S(T(new THREE.SphereGeometry(0.126, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), 0, 0.165, -0.005), 1.02, 1.15, 1.08), 0xd7263d),
@@ -122,6 +145,12 @@ const LOOKS = {
       ]), vcMat());
       at('spine', mergeGeos([tint(T(new THREE.TorusGeometry(0.085, 0.035, 6, 14).rotateX(Math.PI / 2), 0, 0.52, 0.01), 0xf1c40f)]), vcMat());
       at('shoulderL', mergeGeos([tint(T(cyl(0.07, 0.07, 0.05, 10), 0, -0.05, 0), 0xf5f5f5)]), vcMat());
+      // (v1.1) tatuajes en los brazos, cadena, gafas de sol y zapatillas rojas
+      for (const sd of ['L', 'R']) at('elbow' + sd, mergeGeos([tint(T(R(box(0.1, 0.03, 0.1), 0, 0.5, 0), 0, -0.1, 0), 0x263238), tint(T(R(box(0.1, 0.025, 0.1), 0, -0.4, 0), 0, -0.16, 0), 0x263238)]), vcMat());
+      const chain = [];
+      for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2; chain.push(tint(T(new THREE.TorusGeometry(0.012, 0.004, 4, 8), Math.cos(a) * 0.1, 0.48 - Math.max(0, Math.sin(a)) * 0.06, Math.sin(a) * 0.08 + 0.03), 0xffd54f)); }
+      at('spine', mergeGeos(chain), vcMat());
+      at('head', mergeGeos([tint(T(box(0.18, 0.04, 0.02), 0, 0.14, 0.11), 0x111111)]), vcMat());
     },
     weapon: bottleGeo,
   },
@@ -258,12 +287,30 @@ export class Brute {
     this.root.position.set(this.x, this.root.position.y, this.z);
     this.flashT -= dt;
     for (const m of this.mats) if (m.emissive) m.emissive.setHex(this.flashT > 0 ? 0x331111 : 0);
+    // (v1.1) el arma brilla en rojo mientras carga el golpe
+    const charging = this.state === 'windup' || this.state === 'strike';
+    this.weapon.material.emissive.setRGB(charging ? 0.35 + 0.3 * Math.sin(this.t * 30) : 0, charging ? 0.05 : 0, 0);
   }
 }
 
 // Jefe final: EL GRAN PERROFLAUTA (ficticio y satírico)
 export class Boss extends Brute {
-  constructor(scene) { super(scene, 'final'); }
+  constructor(scene) {
+    super(scene, 'final');
+    // (v1.1) su perro le acompaña corriendo (de ahí el mote)
+    const dog = this.dog = new THREE.Group();
+    const fur = lam(0xa1887f), dark = lam(0x5d4037);
+    const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); dog.add(m); return m; };
+    add(new THREE.BoxGeometry(0.32, 0.26, 0.7), fur, 0, 0.5, 0);
+    this.dogHead = add(new THREE.BoxGeometry(0.26, 0.24, 0.28), fur, 0, 0.72, 0.42);
+    add(new THREE.BoxGeometry(0.12, 0.1, 0.16), dark, 0, 0.66, 0.6);
+    add(new THREE.BoxGeometry(0.07, 0.14, 0.05), dark, -0.1, 0.88, 0.36); add(new THREE.BoxGeometry(0.07, 0.14, 0.05), dark, 0.1, 0.88, 0.36);
+    add(new THREE.BoxGeometry(0.24, 0.05, 0.05), lam(0xe53935), 0, 0.6, 0.3);
+    this.dogTail = add(new THREE.BoxGeometry(0.05, 0.05, 0.3), fur, 0, 0.62, -0.45); this.dogTail.rotation.x = 0.7;
+    this.dogLegs = [[-0.1, 0.25], [0.1, 0.25], [-0.1, -0.25], [0.1, -0.25]].map(([x, z]) => { const g = new THREE.Group(); g.position.set(x, 0.4, z); const l = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.4, 0.07), dark); l.position.y = -0.2; g.add(l); dog.add(g); return g; });
+    dog.scale.setScalar(1.6); dog.visible = false; scene.add(dog);
+  }
+  reset() { super.reset(); if (this.dog) this.dog.visible = false; }
   start(pz, hp) { super.start(0, pz, hp); this.state = 'intro'; this.rel = 110; }
   get vulnerable() { return this.active && (this.state === 'approach' || this.state === 'windup' || this.state === 'strike' || this.state === 'recover'); }
   update(dt, px, pz, cb) {
@@ -278,8 +325,21 @@ export class Boss extends Brute {
       JOINTS.forEach(([name], i) => J[name].rotation.set(r[i * 3], r[i * 3 + 1], r[i * 3 + 2]));
       J.shoulderR.rotation.set(-2.6, 0, 0.3); J.elbowR.rotation.set(-0.8, 0, 0);
       this.z = pz - this.rel; this.root.position.set(this.x, 0, this.z);
+      this._dog(dt);
       return;
     }
     super.update(dt, px, pz, cb);
+    this._dog(dt);
+  }
+  _dog(dt) {
+    const d = this.dog; if (!d) return;
+    d.visible = this.active && this.state !== 'dying';
+    if (!d.visible) return;
+    const side = this.x > 0 ? -1 : 1;
+    d.position.set(this.x + side * 2.6, Math.abs(Math.sin(this.t * 14)) * 0.12, this.z + 0.8);
+    d.rotation.y = Math.PI;
+    this.dogLegs.forEach((l, i) => { l.rotation.x = Math.sin(this.t * 14 + (i % 2 ? Math.PI : 0) + (i > 1 ? 1 : 0)) * 0.7; });
+    this.dogTail.rotation.y = Math.sin(this.t * 20) * 0.6;
+    this.dogHead.rotation.x = this.state === 'windup' ? -0.3 : 0;
   }
 }

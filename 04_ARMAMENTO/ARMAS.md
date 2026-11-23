@@ -62,13 +62,13 @@ Cada arma nueva es más potente que la anterior y mejora una sola cosa: la caden
 | Nivel | Arma | Mejora | Contador |
 |---|---|---|---|
 | 0 | Pistola | Arma inicial | — |
-| 1 | Subfusil | Cadencia | 10 |
-| 2 | Escopeta | Daño | 24 |
-| 3 | Rifle de asalto | Disparos múltiples | 55 |
-| 4 | Ametralladora | Cadencia | 100 |
-| 5 | Lanzacohetes | Daño (con explosión) | 175 |
-| 6 | Arma energética | Disparos múltiples | 300 |
-| 7 | Cañón pesado | Daño | 480 |
+| 1 | Subfusil | Cadencia | 8 |
+| 2 | Escopeta | Daño | 18 |
+| 3 | Rifle de asalto | Disparos múltiples | 40 |
+| 4 | Ametralladora | Cadencia | 75 |
+| 5 | Lanzacohetes | Daño (con explosión) | 130 |
+| 6 | Arma energética | Disparos múltiples | 220 |
+| 7 | Cañón pesado | Daño | 350 |
 
 Los valores están en `docs/js/config.js` y se pueden ajustar.
 
