@@ -150,7 +150,7 @@ function updateDirector(dt) {
       if (!G.miniDone && G.waveIndex >= MINIBOSS.fromWave && G.phaseT > W.duration * MINIBOSS.at) {
         G.miniDone = true;
         const m = minis[G.waveIndex % 2];
-        if (!m.active) {
+        if (!minis.some(x => x.active)) {  // nunca dos minijefes a la vez
           m.start(G.px, G.pz, Math.round(bossHp() / D().boss * MINIBOSS.hpFactor * D().mini));
           banner('¡MINIJEFE!', m.name); sfx.play('boss');
         }
@@ -169,7 +169,7 @@ function updateDirector(dt) {
       }
       break;
     case 'preboss':
-      if (G.phaseT > 6) { setPhase('boss'); boss.start(G.pz, bossHp()); sfx.play('boss'); banner(BOSS.name, 'JEFE FINAL', true); ui.bossBar.classList.remove('hidden'); }
+      if (G.phaseT > 4) { setPhase('boss'); boss.start(G.pz, bossHp()); sfx.play('boss'); banner(BOSS.name, 'JEFE FINAL', true); ui.bossBar.classList.remove('hidden'); }
       break;
     case 'boss':
       break;

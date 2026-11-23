@@ -49,6 +49,8 @@ En el carril derecho aparecen paneles de bonus con valores como +1, +1, +2, +2, 
 - **Cada impacto de tus disparos suma 1 al número del panel** y se ve al instante (al revés que las armas del carril izquierdo, que bajan). **No hay máximo:** si el ejército llena la pantalla, se llena.
 - **(v0.6 del GDD)** Las balas de los soldados también suben el panel (0,25 por bala), y basta con que **el protagonista o cualquier soldado** atraviese el panel para cogerlo (o para recibir la penalización si es rojo y sigue en negativo). No hace falta colocarse en un punto exacto.
 - **Formación del ejército:** cuanto más grande, más ancha (de 4 a 16 columnas, casi toda la carretera). Se desplaza para no salirse de la calzada.
+- **(v0.7 del GDD) Sin límite de soldados.** Cada grupo reclutado en un panel tiene su **propio contador de disparo**, desfasado y con una cadencia ligeramente distinta, para que los grupos nunca disparen a la vez y el fuego parezca continuo.
+- **Partidas más cortas:** las oleadas duran 14–17 s y los descansos 4 s, así que el jefe final aparece hacia el minuto y medio y el ejército no crece sin control.
 - **Valores iniciales (v0.5 del GDD):** los paneles azules y verdes siempre empiezan en **+1**; los rojos empiezan en negativo (de −4 a −20 en Normal). Nunca aparece un +2 o más de inicio: el número solo crece disparando.
 - **Tipos de panel:**
   - **Azul (+N):** al atravesarlo se suman N **soldados**. Corren en formación junto al protagonista (la formación se ensancha cuanto más grande es), llevan la misma arma y disparan recto hacia delante con **menos alcance** que el protagonista.
