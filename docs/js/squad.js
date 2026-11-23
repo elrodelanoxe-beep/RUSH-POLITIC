@@ -3,7 +3,9 @@ import { bodyGeometries, PART_JOINT, PART_GEO, JOINT_INDEX, makePose, runPose, s
 import { gunGeometry, GUN_TIP } from './player.js';
 import { ROAD } from './config.js';
 
-export const MAX_SQUAD = 160;  // límite técnico; en la práctica, sin límite
+// (v1.0) sin límite de soldados: la capacidad de dibujo crece sola cuando hace falta
+const START_CAP = 256;
+const BUCKETS = 12;  // fases de carrera precalculadas (rendimiento con miles de soldados)
 const PARTS = ['pelvis', 'torso', 'head', 'helmet', 'thighL', 'shinL', 'shoeL', 'thighR', 'shinR', 'shoeR',
   'upperArmL', 'foreArmL', 'handL', 'upperArmR', 'foreArmR', 'handR', 'vest', 'backpack'];
 const COLORS = {
@@ -12,7 +14,7 @@ const COLORS = {
   upperArmR: 0x1f5fa8, foreArmR: 0x1f5fa8, handR: 0x222428, vest: 0x3b4048, backpack: 0x2b3036,
 };
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
-const _base = new THREE.Matrix4(), _m = new THREE.Matrix4(), _gunL = new THREE.Matrix4();
+const _base = new THREE.Matrix4(), _m = new THREE.Matrix4(), _gunL = new THREE.Matrix4(), _t = new THREE.Matrix4();
 const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(1, 1, 1), _e = new THREE.Euler();
 
 // Posición de cada soldado respecto al protagonista (detrás y a los lados)
@@ -31,32 +33,39 @@ export function formationHalfWidth(n) { return n <= 2 ? 0.85 : Math.max(0.85, ((
 // Escuadrón de soldados que corren y disparan con el protagonista
 export class Squad {
   constructor(scene) {
-    const geos = bodyGeometries();
-    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    this.parts = [];
-    for (const k of PARTS) {
-      const im = new THREE.InstancedMesh(geos[PART_GEO[k] || k], new THREE.MeshLambertMaterial({ color: COLORS[k] }), MAX_SQUAD);
-      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      im.frustumCulled = false; im.count = 0;
-      im.userData.joint = JOINT_INDEX[PART_JOINT[k]];
-      scene.add(im); this.parts.push(im);
-    }
-    this.gunMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-    this.guns = {};
     this.scene = scene;
-    const sh = new THREE.CircleGeometry(0.42, 12); sh.rotateX(-Math.PI / 2);
-    this.shadow = new THREE.InstancedMesh(sh, new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.3, depthWrite: false }), MAX_SQUAD);
-    this.shadow.frustumCulled = false; this.shadow.count = 0; scene.add(this.shadow);
-    this.pose = makePose(); this.joints = makeJointMatrices();
+    this.geos = bodyGeometries();
+    this.partMats = PARTS.map(k => new THREE.MeshLambertMaterial({ color: COLORS[k] }));
+    this.gunMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    this.shadowGeo = new THREE.CircleGeometry(0.42, 12); this.shadowGeo.rotateX(-Math.PI / 2);
+    this.shadowMat = new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.3, depthWrite: false });
+    this.parts = []; this.guns = {}; this.cap = 0;
+    this._alloc(START_CAP);
+    this.pose = makePose();
+    this.bucketJ = Array.from({ length: BUCKETS }, () => makeJointMatrices());
     this.members = []; this.model = 'pistola';
+    this.groups = 0;
+  }
+
+  _mk(geo, mat, cap) {
+    const im = new THREE.InstancedMesh(geo, mat, cap);
+    im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.count = 0;
+    this.scene.add(im); return im;
+  }
+
+  // crea (o agranda) los InstancedMesh
+  _alloc(cap) {
+    for (const im of this.parts) { this.scene.remove(im); im.dispose(); }
+    for (const im of Object.values(this.guns)) { this.scene.remove(im); im.dispose(); }
+    if (this.shadow) { this.scene.remove(this.shadow); this.shadow.dispose(); }
+    this.parts = PARTS.map((k, i) => { const im = this._mk(this.geos[PART_GEO[k] || k], this.partMats[i], cap); im.userData.joint = JOINT_INDEX[PART_JOINT[k]]; return im; });
+    this.guns = {};
+    this.shadow = this._mk(this.shadowGeo, this.shadowMat, cap);
+    this.cap = cap;
   }
 
   _gun(model) {
-    if (!this.guns[model]) {
-      const im = new THREE.InstancedMesh(gunGeometry(model), this.gunMat, MAX_SQUAD);
-      im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; im.count = 0;
-      this.scene.add(im); this.guns[model] = im;
-    }
+    if (!this.guns[model]) this.guns[model] = this._mk(gunGeometry(model), this.gunMat, this.cap);
     return this.guns[model];
   }
 
@@ -67,10 +76,18 @@ export class Squad {
 
   get count() { return this.members.length; }
 
+  // Cada grupo reclutado (un panel) tiene su propio contador de disparo, desfasado y con
+  // una cadencia ligeramente distinta: así los grupos nunca disparan a la vez (fuego continuo).
   add(n, fromX, fromZ) {
-    const cap = Math.min(MAX_SQUAD, this.cap || MAX_SQUAD);
-    for (let i = 0; i < n && this.members.length < cap; i++) {
-      this.members.push({ x: fromX + (Math.random() - 0.5), z: fromZ + Math.random(), phase: Math.random() * 6.28, fireCd: Math.random() * 0.3 });
+    const g = { offset: Math.random(), rateMul: 0.88 + Math.random() * 0.24 };
+    this.groups++;
+    for (let i = 0; i < n; i++) {
+      this.members.push({ x: fromX + (Math.random() - 0.5), z: fromZ + Math.random(), phase: Math.random() * 6.28,
+        group: g, fireCd: g.offset * 0.3 + Math.random() * 0.04 });
+    }
+    if (this.members.length > this.cap) {
+      let c = this.cap; while (c < this.members.length) c *= 2;
+      this._alloc(c);
     }
   }
 
@@ -89,34 +106,37 @@ export class Squad {
     return out;
   }
 
-  clear() { this.members.length = 0; this.update(0, 0, 0); }
+  clear() { this.members.length = 0; this.groups = 0; this.update(0, 0, 0); }
 
   update(dt, px, pz, onFire) {
     const lim = ROAD.halfWidth - 0.4;
     const gun = this._gun(this.model);
     const n = this.members.length;
+    // posturas de carrera precalculadas en el origen (mirando hacia delante)
+    this.t = (this.t || 0) + dt;
+    _base.makeRotationY(Math.PI);
+    for (let b = 0; b < BUCKETS; b++) {
+      runPose(this.pose, this.t * 11.5 + (b / BUCKETS) * Math.PI * 2, 1, { aim: true, aimYaw: 0 });
+      solve(_base, this.pose, this.bucketJ[b]);
+    }
+    _gunL.makeRotationX(Math.PI / 2).setPosition(0, -0.07, 0.01);
+    const wr = JOINT_INDEX.wristR;
     // la formación se desplaza para no salirse de la calzada (el protagonista puede quedar en un lateral)
     const hw = formationHalfWidth(n), cx = Math.max(-lim + hw, Math.min(lim - hw, px));
     this.cx = hw >= lim ? 0 : cx;
+    const f = Math.min(1, dt * 8);
     for (let k = 0; k < n; k++) {
       const m = this.members[k];
       const [ox, oz] = slot(k, n);
       const tx = Math.max(-lim, Math.min(lim, this.cx + ox)), tz = pz + oz;
-      const f = Math.min(1, dt * 8);
       m.x += (tx - m.x) * f; m.z += (tz - m.z) * f;
-      m.phase += dt * 11.5;
-      _base.compose(_p.set(m.x, 0, m.z), _q.setFromEuler(_e.set(0, Math.PI, 0)), _s.set(1, 1, 1));
-      runPose(this.pose, m.phase, 1, { aim: true, aimYaw: 0 });
-      const J = solve(_base, this.pose, this.joints);
-      for (const im of this.parts) im.setMatrixAt(k, J[im.userData.joint]);
-      // arma en la mano derecha
-      _gunL.makeRotationX(Math.PI / 2).setPosition(0, -0.07, 0.01);
-      _m.multiplyMatrices(J[JOINT_INDEX.wristR], _gunL);
-      gun.setMatrixAt(k, _m);
-      this.shadow.setMatrixAt(k, _m.compose(_p.set(m.x, 0.025, m.z), _q.identity(), _s.set(1, 1, 1)));
+      const J = this.bucketJ[(k * 5 + (m.group ? (m.group.offset * BUCKETS) | 0 : 0)) % BUCKETS];
+      _t.makeTranslation(m.x, 0, m.z);
+      for (const im of this.parts) { _m.multiplyMatrices(_t, J[im.userData.joint]); im.setMatrixAt(k, _m); }
+      _m.multiplyMatrices(_t, J[wr]).multiply(_gunL); gun.setMatrixAt(k, _m);
+      _m.makeTranslation(m.x, 0.025, m.z); this.shadow.setMatrixAt(k, _m);
       m.fireCd -= dt;
-      if (onFire && m.fireCd <= 0) { m.fireCd += onFire(m) || 0.25; if (m.fireCd < 0) m.fireCd = 0; }
-      _s.set(1, 1, 1);
+      if (onFire && m.fireCd <= 0) { m.fireCd += (onFire(m) || 0.25) / (m.group ? m.group.rateMul : 1); if (m.fireCd < 0) m.fireCd = 0; }
     }
     for (const im of this.parts) { im.count = n; im.instanceMatrix.needsUpdate = true; }
     gun.count = n; gun.instanceMatrix.needsUpdate = true;
